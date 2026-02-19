@@ -14,7 +14,7 @@ class Experiment:
             ):
         self.num_banks = num_banks
         self.num_addr  = num_addr 
-        self.num_rows = self.num_addr//16
+        self.num_rows = self.num_addr//16+1
         self.ddr_stats = {}
         self.time_values = {'core0':[0],'core1':[0]}
         # Instantiate the DDR Memory
@@ -114,10 +114,10 @@ class Experiment:
             for j in range(len(self.ddr_stats['row'])):
                 if self.ddr_stats['status'][j]=='ROW MISS':
                     miss[self.ddr_stats['bank'][j]] +=1
-                    self.miss_tab[type2id(self.ddr_stats['current_type'][j]),self.ddr_stats['row'][j]-1,self.ddr_stats['bank'][j]] +=1
+                    self.miss_tab[type2id(self.ddr_stats['current_type'][j]),self.ddr_stats['row'][j],self.ddr_stats['bank'][j]] +=1
                 else:
                     hits[self.ddr_stats['bank']] +=1
-                    self.hits_tab[type2id(self.ddr_stats['current_type'][j]),self.ddr_stats['row'][j]-1,self.ddr_stats['bank'][j]] +=1
+                    self.hits_tab[type2id(self.ddr_stats['current_type'][j]),self.ddr_stats['row'][j],self.ddr_stats['bank'][j]] +=1
 
 
         denominator = miss + hits
