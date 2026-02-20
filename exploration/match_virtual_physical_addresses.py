@@ -18,7 +18,7 @@ class Address2Loc:
         self.num_banks = num_banks
         self.num_rows = num_addr//16 +1
         self.ddr_loc2virt = {bank:{row:[] for row in range(self.num_rows)} for bank in range(self.num_banks)}
-        self.possible_rows = []
+        self.available_rows = []
         self._fill_addr2ddr_loc()
     def _get_bank(self, addr):
         '''outputs the bank (int) corresponding to the address 'addr'
@@ -37,7 +37,7 @@ class Address2Loc:
             for row in range(self.num_rows):
                 self.ddr_loc2virt[bank][row] = np.unique(self.ddr_loc2virt[bank][row])
                 if len(self.ddr_loc2virt[bank][row])>0:
-                    self.possible_rows.append((bank,row))
+                    self.available_rows.append((bank,row))
     def location2rand_addr(self,bank,row):
         '''makes a random choice of address for a given location
         '''

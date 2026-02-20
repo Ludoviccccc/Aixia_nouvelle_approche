@@ -7,21 +7,23 @@ from exploration.match_virtual_physical_addresses import Address2Loc
 
 class Address_Management:
     def __init__(self,
-            nun_instructions=None,
             max_cycle=60,
             min_address = 0,
             max_address = 19,
             num_addr = 40,
             num_banks = 4,
-            num_instructions=10,
+            num_instructions=None,
+            max_instructions=5,
             ):
         self.num_addr = num_addr
         self.min_address = min_address
         self.max_address = max_address
         self.max_cycle = max_cycle
         self.num_instructions = num_instructions
+        self.max_instructions = max_instructions
         self.address2loc = Address2Loc(self.num_addr,num_banks,min_address,max_address)
-    def generate_instruction_sequence(self):
+    def generate_instruction_sequence(self,
+            target_bank,target_row):
         """
         Generate a random dictionary of assembly instructions.
         
@@ -34,19 +36,23 @@ class Address_Management:
             Dictionary with format {cycle: (type, address)}
         """
         if self.num_instructions is None:
-            self.num_instructions = random.randint(1, 20)  # Random number of instructions
+            num_instructions = random.randint(2, self.max_instructions)  # Random number of instructions
             # Ensure we don't generate more instructions than available cycles
-        num_instructions = min(self.num_instructions, self.max_cycle + 1)
+        num_instructions = min(num_instructions, self.max_cycle + 1)
         
         instructions = {}
         instructions_adjoint = {}
         instruction_types = ['read', 'write']
         
         # Generate unique cycle numbers
-        cycles = random.sample(range(0, self.max_cycle + 1), num_instructions)
+        cycles = sorted(random.sample(range(0, self.max_cycle + 1), num_instructions))
         
-        for cycle in cycles:
-            bank,row = random.choice(self.address2loc.possible_rows)
+        for i,cycle in enumerate(cycles):
+            if i!=0 and i!=len(cycles)-1:
+                bank,row = random.choice(self.address2loc.available_rows)
+            else:
+                bank = target_bank
+                row = target_row
             address = self.address2loc.location2rand_addr(bank,row)
             instr_type = random.choice(instruction_types)
             instructions[cycle] = (instr_type, address)
