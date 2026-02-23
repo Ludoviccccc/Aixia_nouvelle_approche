@@ -1,6 +1,7 @@
 New approach for interference source identification
 
-
+* A faire:
+Créer historique pour les différents composants de la DDR
 
 Espace de paramètres:
 {(RD l), (WR l)}
