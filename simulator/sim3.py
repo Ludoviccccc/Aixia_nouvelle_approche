@@ -381,7 +381,7 @@ class DDRMemoryController:
         #print(f"{GlobalVar.global_cycle}: [DDR controller] Scheduling {best_req.req_type.upper()}@{best_req.addr} via Controller")
         #print(f"{GlobalVar.global_cycle}: [DDR controller] Bank {bank}, Row {row} | {row_status} | Calculated Delay: {delay} | Completion at Cycle {completion_time}")
 
-        #self.sequence_ddr.append({'stage':'scheduling','cycle':GlobalVar.global_cycle,'type':req.req_type.upper(),'core':req.core_id,'addr':req.addr})
+        self.sequence_ddr.append({'stage':'scheduling','cycle':GlobalVar.global_cycle,'type':req.req_type.upper(),'core':req.core_id,'addr':req.addr})
 
         # Pass the request to the DDR
         best_req.time = self.cycle # Update request time to when it's issued to DDR

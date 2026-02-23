@@ -5,7 +5,7 @@ import numpy as np
 
 
 # Simulation setup
-random.seed(0) # For reproducible results
+#random.seed(0) # For reproducible results
 
 class Experiment:
     def __init__(self,
@@ -155,22 +155,22 @@ class Experiment:
     def output_data(self):
         return {'time_core0':max(self.time_values['core0']),
                 'time_core1':max(self.time_values['core1']),
-                'miss_ratios_detailled':self.ratios_tab,
-                'miss_ratios_detailled_read':self.ratios_tab_read,
-                'miss_ratios_detailled_write':self.ratios_tab_write,
-                'miss_ratios_global': self.ratios,
+                #'miss_ratios_detailled':self.ratios_tab,
+                #'miss_ratios_detailled_read':self.ratios_tab_read,
+                #'miss_ratios_detailled_write':self.ratios_tab_write,
+                #'miss_ratios_global': self.ratios,
                 'miss':self.miss_tab.sum(axis=0),
                 'hits':self.hits_tab.sum(axis=0),
                 'miss_read':self.miss_tab[0],
                 'hits_read':self.hits_tab[0],
                 'miss_write':self.miss_tab[1],
                 'hits_write':self.hits_tab[1],
-                'L2_miss':self.cache_stats_core_0['L2']['misses'],
-                'L2_hit': self.cache_stats_core_0['L2']['hits'],
-                'L2_miss_write':self.cache_stats_core_0['L2']['misses_write'],
-                'L2_miss_read':self.cache_stats_core_0['L2']['misses_read'],
-                'L2_hit_write':self.cache_stats_core_0['L2']['hits_write'],
-                'L2_hit_read':self.cache_stats_core_0['L2']['hits_read'],
+                #'L2_miss':self.cache_stats_core_0['L2']['misses'],
+                #'L2_hit': self.cache_stats_core_0['L2']['hits'],
+                #'L2_miss_write':self.cache_stats_core_0['L2']['misses_write'],
+                #'L2_miss_read':self.cache_stats_core_0['L2']['misses_read'],
+                #'L2_hit_write':self.cache_stats_core_0['L2']['hits_write'],
+                #'L2_hit_read':self.cache_stats_core_0['L2']['hits_read'],
                 'shared_ressource_events':GlobalVar.shared_resource_events,
                 }
 class Env:
@@ -192,42 +192,45 @@ class Env:
         out = {}
         GlobalVar.clear_history()
         out['core0'] = program0.simulate(self.cycles)
+        out['core0'] = GlobalVar.ddr_access_log
         GlobalVar.clear_history()
         out['core1'] = program1.simulate(self.cycles)
+        out['core1'] = GlobalVar.ddr_access_log
         GlobalVar.clear_history()
         out['mutual'] = program.simulate(self.cycles)
+        out['mutual'] = GlobalVar.ddr_access_log
         GlobalVar.clear_history()
-        del out['core0']['time_core1']
-        del out['core1']['time_core0']
+        #del out['core0']['time_core1']
+        #del out['core1']['time_core0']
         #ddr targets
-        out['mutual']['diff_time_core0'] = out['mutual']['time_core0'] - out['core0']['time_core0']
-        out['mutual']['diff_time_core1'] = out['mutual']['time_core1'] - out['core1']['time_core1']
-        out['mutual']['diff_time'] = out['mutual']['time_core1'] - out['mutual']['time_core0']
-        out['mutual']['miss_core0'] = out['mutual']['miss'] - out['core0']['miss']
-        out['mutual']['miss_core1'] = out['mutual']['miss'] - out['core1']['miss']
-        out['mutual']['hits_core0'] = out['mutual']['hits'] - out['core0']['hits']
-        out['mutual']['hits_core1'] = out['mutual']['hits'] - out['core1']['hits']
-        out['mutual']['miss_read_core0'] = out['mutual']['miss_read'] - out['core0']['miss_read']
-        out['mutual']['miss_read_core1'] = out['mutual']['miss_read'] - out['core1']['miss_read']
-        out['mutual']['miss_write_core0'] = out['mutual']['miss_write'] - out['core0']['miss_write']
-        out['mutual']['miss_write_core1'] = out['mutual']['miss_write'] - out['core1']['miss_write']
-        out['mutual']['hits_read_core0'] = out['mutual']['hits_read'] - out['core0']['hits_read']
-        out['mutual']['hits_read_core1'] = out['mutual']['hits_read'] - out['core1']['hits_read']
-        out['mutual']['hits_write_core0'] = out['mutual']['hits_write'] - out['core0']['hits_write']
-        out['mutual']['hits_write_core1'] = out['mutual']['hits_write'] - out['core1']['hits_write']
+        #out['mutual']['diff_time_core0'] = out['mutual']['time_core0'] - out['core0']['time_core0']
+        #out['mutual']['diff_time_core1'] = out['mutual']['time_core1'] - out['core1']['time_core1']
+        #out['mutual']['diff_time'] = out['mutual']['time_core1'] - out['mutual']['time_core0']
+        #out['mutual']['miss_core0'] = out['mutual']['miss'] - out['core0']['miss']
+        #out['mutual']['miss_core1'] = out['mutual']['miss'] - out['core1']['miss']
+        #out['mutual']['hits_core0'] = out['mutual']['hits'] - out['core0']['hits']
+        #out['mutual']['hits_core1'] = out['mutual']['hits'] - out['core1']['hits']
+        #out['mutual']['miss_read_core0'] = out['mutual']['miss_read'] - out['core0']['miss_read']
+        #out['mutual']['miss_read_core1'] = out['mutual']['miss_read'] - out['core1']['miss_read']
+        #out['mutual']['miss_write_core0'] = out['mutual']['miss_write'] - out['core0']['miss_write']
+        #out['mutual']['miss_write_core1'] = out['mutual']['miss_write'] - out['core1']['miss_write']
+        #out['mutual']['hits_read_core0'] = out['mutual']['hits_read'] - out['core0']['hits_read']
+        #out['mutual']['hits_read_core1'] = out['mutual']['hits_read'] - out['core1']['hits_read']
+        #out['mutual']['hits_write_core0'] = out['mutual']['hits_write'] - out['core0']['hits_write']
+        #out['mutual']['hits_write_core1'] = out['mutual']['hits_write'] - out['core1']['hits_write']
         #L2 targets
-        out['mutual']['L2_miss_core0'] = out['mutual']['L2_miss'] - out['core0']['L2_miss']
-        out['mutual']['L2_hit_core0'] = out['mutual']['L2_hit'] - out['core0']['L2_hit']
-        out['mutual']['L2_miss_core1'] = out['mutual']['L2_miss'] - out['core1']['L2_miss']
-        out['mutual']['L2_hit_core1'] = out['mutual']['L2_hit'] - out['core1']['L2_hit']
+        #out['mutual']['L2_miss_core0'] = out['mutual']['L2_miss'] - out['core0']['L2_miss']
+        #out['mutual']['L2_hit_core0'] = out['mutual']['L2_hit'] - out['core0']['L2_hit']
+        #out['mutual']['L2_miss_core1'] = out['mutual']['L2_miss'] - out['core1']['L2_miss']
+        #out['mutual']['L2_hit_core1'] = out['mutual']['L2_hit'] - out['core1']['L2_hit']
 
 
-        out['mutual']['L2_miss_read_core0'] = out['mutual']['L2_miss_read'] - out['core0']['L2_miss_read']
-        out['mutual']['L2_hit_read_core0'] = out['mutual']['L2_hit_read'] - out['core0']['L2_hit_read']
-        out['mutual']['L2_miss_read_core1'] = out['mutual']['L2_miss_read'] - out['core1']['L2_miss_read']
-        out['mutual']['L2_hit_read_core1'] = out['mutual']['L2_hit_read'] - out['core1']['L2_hit_read']
-        out['mutual']['L2_miss_write_core0'] = out['mutual']['L2_miss_write'] - out['core0']['L2_miss_write']
-        out['mutual']['L2_hit_write_core0'] = out['mutual']['L2_hit_write'] - out['core0']['L2_hit_write']
-        out['mutual']['L2_miss_write_core1'] = out['mutual']['L2_miss_write'] - out['core1']['L2_miss_write']
-        out['mutual']['L2_hit_write_core1'] = out['mutual']['L2_hit_write'] - out['core1']['L2_hit_write']
+        #out['mutual']['L2_miss_read_core0'] = out['mutual']['L2_miss_read'] - out['core0']['L2_miss_read']
+        #out['mutual']['L2_hit_read_core0'] = out['mutual']['L2_hit_read'] - out['core0']['L2_hit_read']
+        #out['mutual']['L2_miss_read_core1'] = out['mutual']['L2_miss_read'] - out['core1']['L2_miss_read']
+        #out['mutual']['L2_hit_read_core1'] = out['mutual']['L2_hit_read'] - out['core1']['L2_hit_read']
+        #out['mutual']['L2_miss_write_core0'] = out['mutual']['L2_miss_write'] - out['core0']['L2_miss_write']
+        #out['mutual']['L2_hit_write_core0'] = out['mutual']['L2_hit_write'] - out['core0']['L2_hit_write']
+        #out['mutual']['L2_miss_write_core1'] = out['mutual']['L2_miss_write'] - out['core1']['L2_miss_write']
+        #out['mutual']['L2_hit_write_core1'] = out['mutual']['L2_hit_write'] - out['core1']['L2_hit_write']
         return out
