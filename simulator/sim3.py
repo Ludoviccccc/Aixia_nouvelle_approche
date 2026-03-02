@@ -18,15 +18,16 @@ import numpy as np
 # ==========================================================
 # Global clock
 # ==========================================================
-class GlobalVar:
-    global_cycle = 0
-    # New: Track shared resource contention
-    shared_resource_events = []
-    l2_access_log = []  # Track L2 cache accesses
-    ddr_access_log = []  # Track DDR memory accesses
-    
-    @classmethod
-    def log_shared_resource_event(cls, event_type, resource_type, initiators, details,cycle):
+class Var:
+    def __init__(self):
+        self.global_cycle = 0
+        # New: Track shared resource contention
+        self.shared_resource_events = []
+        self.l2_access_log = []  # Track L2 cache accesses
+        self.ddr_access_log = []  # Track DDR memory accesses
+     
+    #@classmethod
+    def log_shared_resource_event(self, event_type, resource_type, initiators, details,cycle):
         """Log when multiple initiators access shared resources simultaneously"""
         event = {
             'cycle': cycle,
@@ -35,13 +36,13 @@ class GlobalVar:
             'initiators': initiators.copy(),  # Core IDs involved
             'details': details.copy()
         }
-        cls.shared_resource_events.append(event)
+        self.shared_resource_events.append(event)
     
-    @classmethod
-    def log_l2_access(cls, core_id, addr, operation, set_index, way, hit):
+    #@classmethod
+    def log_l2_access(self, core_id, addr, operation, set_index, way, hit):
         """Log L2 cache access for contention analysis"""
 
-        cycle = cls.global_cycle
+        cycle = self.global_cycle
         access = {
             'cycle': cycle,
             'core_id': core_id,
@@ -51,12 +52,12 @@ class GlobalVar:
             'way': way,
             'hit': hit
         }
-        cls.l2_access_log.append(access)
+        self.l2_access_log.append(access)
     
-    @classmethod
-    def log_ddr_access(cls, core_id, addr, operation, bank, row, status):
+    #@classmethod
+    def log_ddr_access(self, core_id, addr, operation, bank, row, status,id_):
         """Log DDR memory access for contention analysis"""
-        cycle = cls.global_cycle
+        cycle = self.global_cycle
         access = {
             'cycle': cycle,
             'core_id': core_id,
@@ -64,15 +65,16 @@ class GlobalVar:
             'operation': operation,
             'bank': bank,
             'row': row,
-            'status': status
+            'status': status,
+            'id':id_,
         }
-        cls.ddr_access_log.append(access)
-    @classmethod
-    def clear_history(cls):
-        cls.global_cycle = 0
-        cls.shared_resource_events = []
-        cls.l2_access_log = []  # Track L2 cache accesses
-        cls.ddr_access_log = []  # Track DDR memory accesses
+        self.ddr_access_log.append(access)
+    #@classmethod
+    def clear_history(self):
+        self.global_cycle = 0
+        self.shared_resource_events = []
+        self.l2_access_log = []  # Track L2 cache accesses
+        self.ddr_access_log = []  # Track DDR memory accesses
 # -----------------------------------------------------
 # CacheLine: Represents a single cache line in the cache hierarchy
 # -----------------------------------------------------
@@ -147,13 +149,15 @@ class PLRU:
 # Represents a memory access request (either read or write)
 # ---------------------------------------------------------
 class MemoryRequest:
-    def __init__(self, core_id, time, req_type, addr, callback=None):
+    def __init__(self, core_id, time, req_type, addr, callback=None,id_=None):
         self.core_id = core_id
         self.time = time              # Time of request
         self.req_type = req_type      # Type of request 'read' or 'write'
         self.addr = addr
         self.callback = callback      # Callback function to signal read completion
         self.completion_time = -1     # When the request is expected to complete
+
+        self.id_ = id_ #identifyer for the instruction
 
     def __lt__(self, other):
         # Prioritize based on completion time for scheduling
@@ -173,7 +177,8 @@ class MemoryRequest:
 # - Using a heapqueue ensures that all items are and remain sorted
 #   according to their ready_time (and req)
 class Interconnect:
-    def __init__(self, memory_controller, delay=5, bandwidth=4):
+    def __init__(self, memory_controller, delay=5, bandwidth=4,vars_=None):
+        self.vars = vars_
         self.memory_controller = memory_controller
         self.queue = []               # Queue of pending memory requests (ready_time, request)
         self.delay = delay            # Base delay before forwarding to DDR controller
@@ -190,7 +195,7 @@ class Interconnect:
         ready_time = self.cycle + self.delay + random.randint(0, 2)
         heapq.heappush(self.queue, (ready_time, req))
 
-        #print(f"{GlobalVar.global_cycle}: [Interconnect] Request {req.req_type.upper()}@{req.addr} from core {req.core_id} queued, to be released at {ready_time}")
+        #print(f"{self.vars.global_cycle}: [Interconnect] Request {req.req_type.upper()}@{req.addr} from core {req.core_id} queued, to be released at {ready_time}")
 
     # Process the interconnect's current cycle
     def tick(self):
@@ -206,7 +211,7 @@ class Interconnect:
 
         # Forward the selected requests to the memory controller
         for req in requests_to_forward:
-            #print(f"{GlobalVar.global_cycle}: [Interconnect] Request {req} sent to memory controller")
+            #print(f"{self.vars.global_cycle}: [Interconnect] Request {req} sent to memory controller")
             self.memory_controller.request(req)
 
         self.cycle += 1
@@ -217,7 +222,9 @@ class Interconnect:
 # Arbitrates and schedules requests for the DDR memory
 # ---------------------------------------------------------
 class DDRMemoryController:
-    def __init__(self, ddr_model, tRCD=15, tRP=15, tCAS=15, tRC=30, tWR=15, tRTP=8, tCCD=4):
+    def __init__(self, ddr_model, tRCD=15, tRP=15, tCAS=15, tRC=30, tWR=15, tRTP=8, tCCD=4,vars_=None):
+
+        self.vars = vars_
         self.ddr = ddr_model
         self.queue = []  # Requests waiting to be scheduled by the controller
         self.scheduled_ddr_requests = [] # Requests passed to DDR, waiting for completion
@@ -244,9 +251,9 @@ class DDRMemoryController:
     # Enqueue a request
     def request(self, req):
         
-        #print(f"{GlobalVar.global_cycle}: [DDR controller] request queued: {req.req_type.upper()}@{req.addr}")
+        #print(f"{self.vars.global_cycle}: [DDR controller] request queued: {req.req_type.upper()}@{req.addr}")
         heapq.heappush(self.queue, (req.time, req)) # Store with original arrival time for fairness
-        self.sequence_ddr.append({'stage':'queued','cycle':GlobalVar.global_cycle,'type':req.req_type.upper(),'core':req.core_id,'addr':req.addr})
+        self.sequence_ddr.append({'stage':'queued','cycle':self.vars.global_cycle,'type':req.req_type.upper(),'core':req.core_id,'addr':req.addr})
 
     def tick(self):
         
@@ -270,13 +277,13 @@ class DDRMemoryController:
             if req.completion_time <= self.cycle:
                 if req.req_type == 'read':
                     _ = self.ddr.memory.get(req.addr, 0) # Read value from DDR model
-                    #print(f"{GlobalVar.global_cycle}: [DDR controller] READ@{req.addr} complete")
-                    self.sequence_ddr.append({'stage':'complete','cycle':GlobalVar.global_cycle,'type':req.req_type.upper(),'core':req.core_id,'addr':req.addr})
+                    #print(f"{self.vars.global_cycle}: [DDR controller] READ@{req.addr} complete")
+                    self.sequence_ddr.append({'stage':'complete','cycle':self.vars.global_cycle,'type':req.req_type.upper(),'core':req.core_id,'addr':req.addr})
                     if req.callback:
                         req.callback()
                 elif req.req_type == 'write':
-                    #print(f"{GlobalVar.global_cycle}: [DDR controller] WRITE@{req.addr} complete")
-                    self.sequence_ddr.append({'stage':'complete','cycle':GlobalVar.global_cycle,'type':req.req_type.upper(),'core':req.core_id,'addr':req.addr})
+                    #print(f"{self.vars.global_cycle}: [DDR controller] WRITE@{req.addr} complete")
+                    self.sequence_ddr.append({'stage':'complete','cycle':self.vars.global_cycle,'type':req.req_type.upper(),'core':req.core_id,'addr':req.addr})
                     pass
 
                 completed.append(req_info)
@@ -312,11 +319,11 @@ class DDRMemoryController:
             if self.cycle < last_cmd_time + self.tCCD: # Basic command-to-command delay
                  continue
 
-            self.sequence_ddr.append({'stage':'ready','cycle':GlobalVar.global_cycle,'type':req.req_type.upper(),'core':req.core_id,'addr':req.addr})
+            self.sequence_ddr.append({'stage':'ready','cycle':self.vars.global_cycle,'type':req.req_type.upper(),'core':req.core_id,'addr':req.addr})
             candidates.append(req)
 
         if not candidates:
-            #print(f"{GlobalVar.global_cycle}: [DDR controller] No suitable candidates for scheduling this cycle.")
+            #print(f"{self.vars.global_cycle}: [DDR controller] No suitable candidates for scheduling this cycle.")
             return
 
         # Sort candidates based on priority rules (simplified scoring for demonstration)
@@ -338,10 +345,10 @@ class DDRMemoryController:
         delay = self.ddr.base_latency
         row_status = "ROW HIT"
         if self.bank_open_row[bank] == row:
-            #print(f"{GlobalVar.global_cycle}: [DDR] ROW HIT@{best_req.addr} for bank {bank} ")
+            #print(f"{self.vars.global_cycle}: [DDR] ROW HIT@{best_req.addr} for bank {bank} ")
             delay = self.ddr.row_hit_latency
         else:
-            #print(f"{GlobalVar.global_cycle}: [DDR] ROW MISS@{best_req.addr} for bank {bank} ")
+            #print(f"{self.vars.global_cycle}: [DDR] ROW MISS@{best_req.addr} for bank {bank} ")
             delay = self.tRP + self.tRCD + self.tCAS # ACT (tRCD) + PRE (tRP) + CAS
             row_status = "ROW MISS"
             self.bank_precharge_complete_time[bank] = self.cycle + self.tRP # Bank busy during precharge
@@ -355,11 +362,11 @@ class DDRMemoryController:
             if last_cmd_type == 'write' and best_req.req_type == 'read':
                 # Simplified: add twR as turnaround penalty for WR->RD
                 delay += self.tWR # tWTR for actual paper value
-                #print(f"{GlobalVar.global_cycle}: [DDR] Applying WR->RD transition penalty for Bank {bank}")
+                #print(f"{self.vars.global_cycle}: [DDR] Applying WR->RD transition penalty for Bank {bank}")
             elif last_cmd_type == 'read' and best_req.req_type == 'write':
                 # Simplified: add tWR (Write Latency) + 2 cycles for RD->WR
                 delay += self.tWR + 2
-                #print(f"{GlobalVar.global_cycle}: [DDR] Applying RD->WR transition penalty for Bank {bank}")
+                #print(f"{self.vars.global_cycle}: [DDR] Applying RD->WR transition penalty for Bank {bank}")
 
         completion_time = self.cycle + delay
 
@@ -378,10 +385,10 @@ class DDRMemoryController:
                 break
         heapq.heapify(self.queue) # Re-heapify after pop
 
-        #print(f"{GlobalVar.global_cycle}: [DDR controller] Scheduling {best_req.req_type.upper()}@{best_req.addr} via Controller")
-        #print(f"{GlobalVar.global_cycle}: [DDR controller] Bank {bank}, Row {row} | {row_status} | Calculated Delay: {delay} | Completion at Cycle {completion_time}")
+        #print(f"{self.vars.global_cycle}: [DDR controller] Scheduling {best_req.req_type.upper()}@{best_req.addr} via Controller")
+        #print(f"{self.vars.global_cycle}: [DDR controller] Bank {bank}, Row {row} | {row_status} | Calculated Delay: {delay} | Completion at Cycle {completion_time}")
 
-        self.sequence_ddr.append({'stage':'scheduling','cycle':GlobalVar.global_cycle,'type':req.req_type.upper(),'core':req.core_id,'addr':req.addr})
+        self.sequence_ddr.append({'stage':'scheduling','cycle':self.vars.global_cycle,'type':req.req_type.upper(),'core':req.core_id,'addr':req.addr})
 
         # Pass the request to the DDR
         best_req.time = self.cycle # Update request time to when it's issued to DDR
@@ -390,11 +397,11 @@ class DDRMemoryController:
         self.scheduled_ddr_requests.append({'request': best_req, 'bank': bank, 'row': row, 'status': row_status})
 
 
-        GlobalVar.log_ddr_access(best_req.core_id, best_req.addr, best_req.req_type,
-                               self.ddr._get_bank(best_req.addr), self.ddr._get_row(best_req.addr), row_status)
+        self.vars.log_ddr_access(best_req.core_id, best_req.addr, best_req.req_type,
+                               self.ddr._get_bank(best_req.addr), self.ddr._get_row(best_req.addr), row_status,best_req.id_)
         for cmd in candidates[1:]:
-            GlobalVar.log_ddr_access(cmd.core_id, cmd.addr, cmd.req_type,
-                               self.ddr._get_bank(cmd.addr), self.ddr._get_row(cmd.addr), 'waiting')
+            self.vars.log_ddr_access(cmd.core_id, cmd.addr, cmd.req_type,
+                               self.ddr._get_bank(cmd.addr), self.ddr._get_row(cmd.addr), 'waiting',best_req.id_)
 
         return {'completion_time': completion_time,
                 'row': row,
@@ -448,7 +455,7 @@ class DDRMemory:
 
         # Simplified state transitions (see Figure 3.9 in Mascarenas-Gonzalez thesis)
         current_state = self.bank_states[bank]
-        #print(f"{GlobalVar.global_cycle}: [DDR] Bank {bank} receives {req.req_type.upper()} for Row {row}. Current state: {current_state.name}")
+        #print(f"{self.vars.global_cycle}: [DDR] Bank {bank} receives {req.req_type.upper()} for Row {row}. Current state: {current_state.name}")
 
         if req.req_type == 'read':
             if current_state == DDRState.IDLE or self.bank_open_row[bank] != row:
@@ -457,15 +464,15 @@ class DDRMemory:
                 self.bank_states[bank] = DDRState.READING
                 self.bank_timers[bank] = req.completion_time
                 self.bank_open_row[bank] = row
-                #print(f"{GlobalVar.global_cycle}: [DDR] Bank {bank} transition: IDLE or row change -> READING scheduled at {req.completion_time}")
+                #print(f"{self.vars.global_cycle}: [DDR] Bank {bank} transition: IDLE or row change -> READING scheduled at {req.completion_time}")
 
             elif current_state == DDRState.ACTIVATE_BANK_ROW or current_state == DDRState.READING:
                 self.bank_states[bank] = DDRState.READING
                 self.bank_timers[bank] = req.completion_time
-                #print(f"{GlobalVar.global_cycle}: [DDR] Bank {bank} transition: ACTIVATE_BANK_ROW/READING -> READING scheduled at {req.completion_time}")
+                #print(f"{self.vars.global_cycle}: [DDR] Bank {bank} transition: ACTIVATE_BANK_ROW/READING -> READING scheduled at {req.completion_time}")
                 
             else:
-                #print(f"{GlobalVar.global_cycle}: [DDR] ERROR: Cannot READ from Bank {bank} in state {current_state.name}")
+                #print(f"{self.vars.global_cycle}: [DDR] ERROR: Cannot READ from Bank {bank} in state {current_state.name}")
                 pass
 
         elif req.req_type == 'write':
@@ -473,14 +480,14 @@ class DDRMemory:
                 self.bank_states[bank] = DDRState.WRITING
                 self.bank_timers[bank] = req.completion_time
                 self.bank_open_row[bank] = row
-                #print(f"{GlobalVar.global_cycle}: [DDR] Bank {bank} transition: IDLE -> WRITING  scheduled at {req.completion_time}")
+                #print(f"{self.vars.global_cycle}: [DDR] Bank {bank} transition: IDLE -> WRITING  scheduled at {req.completion_time}")
 
             elif current_state == DDRState.ACTIVATE_BANK_ROW or current_state == DDRState.WRITING:
                 self.bank_states[bank] = DDRState.WRITING
                 self.bank_timers[bank] = req.completion_time
-                #print(f"{GlobalVar.global_cycle}: [DDR] Bank {bank} transition: ACTIVATE_BANK_ROW/WRITING -> WRITING  scheduled at {req.completion_time}")
+                #print(f"{self.vars.global_cycle}: [DDR] Bank {bank} transition: ACTIVATE_BANK_ROW/WRITING -> WRITING  scheduled at {req.completion_time}")
             else:
-                #print(f"{GlobalVar.global_cycle}: [DDR] ERROR: Cannot WRITE to Bank {bank} in state {current_state.name}")
+                #print(f"{self.vars.global_cycle}: [DDR] ERROR: Cannot WRITE to Bank {bank} in state {current_state.name}")
                 pass
 
         # Store the request with its completion time for processing
@@ -505,7 +512,7 @@ class DDRMemory:
                 # After a read/write, it implicitly goes to ACTIVATE_BANK_ROW, ready for more column access or PRE
                 self.bank_states[bank] = DDRState.ACTIVATE_BANK_ROW
                 self.bank_timers[bank] = 0 # Ready for next command
-                #print(f"{GlobalVar.global_cycle}: [DDR] Bank {bank} access completion, transition: READING/WRITING -> ACTIVATE_BANK_ROW")
+                #print(f"{self.vars.global_cycle}: [DDR] Bank {bank} access completion, transition: READING/WRITING -> ACTIVATE_BANK_ROW")
 
         # Update FSM timers for each bank
         for i in range(self.num_banks):
@@ -519,7 +526,7 @@ class DDRMemory:
             elif self.bank_states[i] == DDRState.PRECHARGING and self.bank_timers[i] <= self.cycle:
                 self.bank_states[i] = DDRState.IDLE
                 self.bank_open_row[i] = None
-                #print(f"{GlobalVar.global_cycle}: [DDR] Bank {i} transition: PRECHARGING -> IDLE")
+                #print(f"{self.vars.global_cycle}: [DDR] Bank {i} transition: PRECHARGING -> IDLE")
 
         self.cycle += 1
 
@@ -527,7 +534,8 @@ class DDRMemory:
 # Models one level in the cache hierarchy
 #----------------------------------------
 class CacheLevel:
-    def __init__(self, level_name, core_id, size, line_size, assoc, memory=None, write_back=True, write_allocate=True):
+    def __init__(self, level_name, core_id, size, line_size, assoc, memory=None, write_back=True, write_allocate=True,vars_=None):
+        self.vars = vars_
         self.level = level_name
         self.core_id = core_id
         self.line_size = line_size
@@ -560,7 +568,7 @@ class CacheLevel:
         return addr // (self.line_size * self.num_sets)
 
     # Handles cache read request
-    def read(self, addr, callback,origine=None):
+    def read(self, addr, callback,origine=None,id_=None):
         
 
         index = self._index(addr)
@@ -568,21 +576,21 @@ class CacheLevel:
         cache_set = self.sets[index]
         plru = self.plru_trees[index]
 				
-        #print(f"{GlobalVar.global_cycle}: [Cache {self.level}] READ@{addr} from {self.core_id}")
+        #print(f"{self.vars.global_cycle}: [Cache {self.level}] READ@{addr} from {self.core_id}")
 
         # Track L2 access for shared cache analysis
         #if self.level == "L2":
-        #    GlobalVar.log_l2_access(origine, addr, 'read', index, -1, False)  # way not known yet
+        #    self.vars.log_l2_access(origine, addr, 'read', index, -1, False)  # way not known yet
 
         # Seach the tag in the cache set
         for i, line in enumerate(cache_set):
             if line.valid and line.tag == tag:
 
                 if self.level == "L2":
-                    GlobalVar.log_l2_access(origine, addr, 'read', index, i, True)
+                    self.vars.log_l2_access(origine, addr, 'read', index, i, True)
                 # There is a hit.
                 # Trace event
-                #print(f"{GlobalVar.global_cycle}: [Cache {self.level}] READ HIT@{addr} from {self.core_id}")
+                #print(f"{self.vars.global_cycle}: [Cache {self.level}] READ HIT@{addr} from {self.core_id}")
                 
                 # Count hits
                 self.hits += 1
@@ -600,9 +608,9 @@ class CacheLevel:
 
         # Cache miss
         if self.level == "L2":
-            GlobalVar.log_l2_access(origine, addr, 'read', index, -1, False)
+            self.vars.log_l2_access(origine, addr, 'read', index, -1, False)
         # Trace event
-        #print(f"{GlobalVar.global_cycle}: [Cache {self.level}] READ MISS@{addr} from {self.core_id}")
+        #print(f"{self.vars.global_cycle}: [Cache {self.level}] READ MISS@{addr} from {self.core_id}")
         
         # Count misses
         self.misses += 1
@@ -621,9 +629,9 @@ class CacheLevel:
             if victim_line.valid and victim_line.dirty and self.write_back:
                 victim_addr = ((victim_line.tag * self.num_sets) + index) * self.line_size
                 if self.lower:
-                    self.lower.write(victim_addr,origine = self.core_id) 
+                    self.lower.write(victim_addr,origine = self.core_id,id_=id_) 
                 elif self.memory: # If L2, send to interconnect
-                    self.memory.request(MemoryRequest(origine, self.memory.cycle, 'write', victim_addr, callback=None))
+                    self.memory.request(MemoryRequest(origine, self.memory.cycle, 'write', victim_addr, callback=None,id_=id_))
             # Now that we have written the data to the next memory level, the
             # cache entry is updated
             victim_line.valid = True
@@ -635,13 +643,13 @@ class CacheLevel:
 
         # Forward the read request to the lower-level cache (if any)
         if self.lower:
-            self.lower.read(addr, lower_cb,origine=self.core_id)
+            self.lower.read(addr, lower_cb,origine=self.core_id,id_=id_)
         # Or to Interconnect (which then sends to DDR Controller)
         elif self.memory:
-            self.memory.request(MemoryRequest(origine, self.memory.cycle, 'read', addr, lower_cb))
+            self.memory.request(MemoryRequest(origine, self.memory.cycle, 'read', addr, lower_cb,id_= id_))
 
     # Handles cache write request
-    def write(self, addr,origine=None):
+    def write(self, addr,origine=None,id_=None):
         
 
         index = self._index(addr)
@@ -649,19 +657,19 @@ class CacheLevel:
         cache_set = self.sets[index]
         plru = self.plru_trees[index]
 
-        #print(f"{GlobalVar.global_cycle}: [Cache {self.level}] WRITE@{addr} from {self.core_id}")
+        #print(f"{self.vars.global_cycle}: [Cache {self.level}] WRITE@{addr} from {self.core_id}")
         # Track L2 access for shared cache analysis
         #if self.level == "L2":
-        #    GlobalVar.log_l2_access(origine, addr, 'write', index, -1, False)
+        #    self.vars.log_l2_access(origine, addr, 'write', index, -1, False)
 
         for i, line in enumerate(cache_set):
             if line.valid and line.tag == tag:
                # Cache hit
                 if self.level == "L2":
-                    GlobalVar.log_l2_access(origine, addr, 'write', index, i, True)
+                    self.vars.log_l2_access(origine, addr, 'write', index, i, True)
                 # There is a cache hit
                 # Trace event
-                #print(f"{GlobalVar.global_cycle}: [Cache {self.level}] WRITE HIT@{addr} from {self.core_id}")
+                #print(f"{self.vars.global_cycle}: [Cache {self.level}] WRITE HIT@{addr} from {self.core_id}")
 
                 # Count hits
                 self.hits += 1
@@ -675,18 +683,18 @@ class CacheLevel:
                 # propagated to the lower levels of the memory hierarchy
                 if not self.write_back:
                     if self.lower:
-                        self.lower.write(addr,origine=self.core_id)
+                        self.lower.write(addr,origine=self.core_id,id_=id_)
                     elif self.memory: # If L2, send to interconnect
-                        self.memory.request(MemoryRequest(origine, self.memory.cycle, 'write', addr))
+                        self.memory.request(MemoryRequest(origine, self.memory.cycle, 'write', addr,id_=id_))
                 
                 return
 
         # There is a cache miss...
         # Cache miss
         if self.level == "L2":
-            GlobalVar.log_l2_access(origine, addr, 'write', index, -1, False)
+            self.vars.log_l2_access(origine, addr, 'write', index, -1, False)
         # Trace event
-        #print(f"{GlobalVar.global_cycle}: [Cache {self.level}] WRITE MISS@{addr} from {self.core_id}")
+        #print(f"{self.vars.global_cycle}: [Cache {self.level}] WRITE MISS@{addr} from {self.core_id}")
         
         # Count misses
         self.misses += 1
@@ -702,9 +710,9 @@ class CacheLevel:
             if victim_line.valid and victim_line.dirty and self.write_back:
                 victim_addr = ((victim_line.tag * self.num_sets) + index) * self.line_size
                 if self.lower:
-                    self.lower.write(victim_addr,origine=self.core_id)
+                    self.lower.write(victim_addr,origine=self.core_id,id_=id_)
                 elif self.memory: # If L2, send to interconnect
-                    self.memory.request(MemoryRequest(origine, self.memory.cycle, 'write', victim_addr))
+                    self.memory.request(MemoryRequest(origine, self.memory.cycle, 'write', victim_addr,id_=id_))
 
             # The entry is now valid
             victim_line.valid = True
@@ -718,9 +726,9 @@ class CacheLevel:
             # If write allocate is false, the data is written to the next level
             # of the memory hierarchy.
             if self.lower:
-                self.lower.write(addr,origine=self.core_id)
+                self.lower.write(addr,origine=self.core_id,id_=id_)
             elif self.memory: # If L2, send to interconnect
-                self.memory.request(MemoryRequest(origine, self.memory.cycle, 'write', addr))
+                self.memory.request(MemoryRequest(origine, self.memory.cycle, 'write', addr,id_=id_))
 
 
 
@@ -756,12 +764,12 @@ class MultiLevelCache:
         self.l1.lower.upper = self.l1
 
     # Read operation (starts at L1 level)
-    def read(self, addr, callback):
-        self.l1.read(addr, callback)
+    def read(self, addr, callback,id_):
+        self.l1.read(addr, callback,id_=id_)
 
     # Write operation (starts at L1 level)
-    def write(self, addr):
-        self.l1.write(addr)
+    def write(self, addr,id_):
+        self.l1.write(addr,id_=id_)
 
     def stats(self):
         return {
@@ -774,7 +782,8 @@ class MultiLevelCache:
 # Simple CPU core model that generates memory accesses
 # ---------------------------------------------------------
 class Core:
-    def __init__(self, core_id, cache):
+    def __init__(self, core_id, cache,vars_):
+        self.vars = vars_
         self.core_id = core_id
         self.cache = cache
         self.cache.core_id = core_id
@@ -787,26 +796,26 @@ class Core:
     def load_instr(self, inst):
         self.inst=inst
 
-    def read(self, addr, callback):
-        self.cache.read(addr, callback)
+    def read(self, addr, callback,id_):
+        self.cache.read(addr, callback,id_=id_)
 
-    def write(self, addr):
-        self.cache.write(addr)   
+    def write(self, addr,id_):
+        self.cache.write(addr,id_=id_)   
 
 
     def enqueue_access(self, op, addr):
         # Enqueue a memory access operation (read or write) in FIFO order 
         # This is used to track pending accesses for dependency checking.
-        #print(f"{GlobalVar.global_cycle}: [Core {self.core_id}] enqueueing access {op.upper()}@{addr} :", end=" ")  
+        #print(f"{self.vars.global_cycle}: [Core {self.core_id}] enqueueing access {op.upper()}@{addr} :", end=" ")  
         self.pending_accesses.append((op, addr))
         if len(self.pending_accesses) > 10:
-            #print(f"{GlobalVar.global_cycle}: [Core {self.core_id}] :more than 10 pending accesses!")   
+            #print(f"{self.vars.global_cycle}: [Core {self.core_id}] :more than 10 pending accesses!")   
             pass
         #print(f"{self.pending_accesses}")
 
     def dequeue_access(self, op, addr):
         # Remove the oldest entry in the queue matching the operation and address
-        #print(f"{GlobalVar.global_cycle}: [Core {self.core_id}] dequeueing access {op.upper()}@{addr} :", end=" ")
+        #print(f"{self.vars.global_cycle}: [Core {self.core_id}] dequeueing access {op.upper()}@{addr} :", end=" ")
         for i, (o, a) in enumerate(self.pending_accesses):
             if o == op and a == addr:
                 self.pending_accesses.pop(i)
@@ -828,60 +837,60 @@ class Core:
         # If the core is waiting for a previous access to complete, it cannot issue a new request
         # We consider all dependencies between instruction in RAW, WAR and WAW on addresses.
         if self.stall_op:
-            op, addr = self.stall_op
+            op, addr,id_ = self.stall_op
             if not self.dependency(op, addr):
-                #print(f"{GlobalVar.global_cycle}: [Core {self.core_id}] Resuming stalled {op.upper()}@{addr}")
+                #print(f"{self.vars.global_cycle}: [Core {self.core_id}] Resuming stalled {op.upper()}@{addr}")
                 if op == 'write':
-                    self.write(addr)
+                    self.write(addr,id_=id_)
                     self.stall_op = None
                 elif op == 'read':
                     self.enqueue_access('read', addr)
-                    self.read(addr, lambda addr=addr: self.dequeue_access('read', addr) )
+                    self.read(addr, lambda addr=addr: self.dequeue_access('read', addr),id_=id_)
                     self.stall_op = None
             else:
-                #print(f"{GlobalVar.global_cycle}: [Core {self.core_id}] Still stalled on {op.upper()}@{addr} due to dependency")
+                #print(f"{self.vars.global_cycle}: [Core {self.core_id}] Still stalled on {op.upper()}@{addr} due to dependency")
                 return 
-            return GlobalVar.global_cycle
+            return self.vars.global_cycle
 
         # Check if there is an instruction to execute
-        if GlobalVar.global_cycle in self.inst:
-            op,addr = self.inst[GlobalVar.global_cycle]
+        if self.vars.global_cycle in self.inst:
+            op,addr,id_ = self.inst[self.vars.global_cycle]
             if op=='write':
                 if self.dependency('write', addr):
                     # There is a pending access with dependency, we stall
-                    #print(f"{GlobalVar.global_cycle}: [Core {self.core_id}] WRITE@{addr} stalled due to dependency")
-                    self.stall_op = ('write', addr)
+                    #print(f"{self.vars.global_cycle}: [Core {self.core_id}] WRITE@{addr} stalled due to dependency")
+                    self.stall_op = ('write', addr,id_)
                     return 
                 else:
-                    #print(f"{GlobalVar.global_cycle}: [Core {self.core_id}] WRITE op at @{addr}")
-                    self.write(addr)             
-                    return GlobalVar.global_cycle
+                    #print(f"{self.vars.global_cycle}: [Core {self.core_id}] WRITE op at @{addr}")
+                    self.write(addr,id_=id_)             
+                    return self.vars.global_cycle
             else:
                 if self.dependency('read', addr):
                     # There is a pending access with dependency, we stall
-                    #print(f"{GlobalVar.global_cycle}: [Core {self.core_id}] READ@{addr} stalled due to dependency")
-                    self.stall_op = ('read', addr)
+                    #print(f"{self.vars.global_cycle}: [Core {self.core_id}] READ@{addr} stalled due to dependency")
+                    self.stall_op = ('read', addr,id_)
                     return
                 else:
-                    #print(f"{GlobalVar.global_cycle}: [Core {self.core_id}] READ op at @{addr}")
+                    #print(f"{self.vars.global_cycle}: [Core {self.core_id}] READ op at @{addr}")
                     self.enqueue_access('read', addr)
-                    self.read(addr, lambda addr=addr: self.dequeue_access('read', addr) )
-                    return GlobalVar.global_cycle
+                    self.read(addr, lambda addr=addr: self.dequeue_access('read', addr),id_=id_)
+                    return self.vars.global_cycle
         else:
              # IDLE cycle, do nothing.
-            #print(f"{GlobalVar.global_cycle}: [Core {self.core_id}] IDLE cycle")
+            #print(f"{self.vars.global_cycle}: [Core {self.core_id}] IDLE cycle")
             pass
 
 
 # Add a new analysis function to detect contention
-def analyze_shared_resource_contention():
+def analyze_shared_resource_contention(vars_):
     """Analyze logged accesses to detect shared resource contention"""
 
     # Analyze L2 cache contention
     l2_contention_cycles = set()
     l2_access_by_cycle = {}
 
-    for access in GlobalVar.l2_access_log:
+    for access in vars_.l2_access_log:
         cycle = access['cycle']
         if cycle not in l2_access_by_cycle:
             l2_access_by_cycle[cycle] = []
@@ -900,7 +909,7 @@ def analyze_shared_resource_contention():
                     'addresses': [access['addr'] for access in accesses],
                     'ways':[access['way'] for access in accesses],
                 }
-                GlobalVar.log_shared_resource_event(
+                vars_.log_shared_resource_event(
                     'L2_CACHE_CONTENTION', 'L2_CACHE', list(cores_involved), details,cycle
                 )
 
@@ -908,7 +917,7 @@ def analyze_shared_resource_contention():
     ddr_contention_cycles = set()
     ddr_access_by_cycle = {}
 
-    for access in GlobalVar.ddr_access_log:
+    for access in vars_.ddr_access_log:
         cycle = access['cycle']
         if cycle not in ddr_access_by_cycle:
             ddr_access_by_cycle[cycle] = []
@@ -943,14 +952,14 @@ def analyze_shared_resource_contention():
                     'bank_conflicts': bank_conflicts,
                     'row_conflicts': row_conflicts
                 }
-                GlobalVar.log_shared_resource_event(
+                vars_.log_shared_resource_event(
                     #'DDR_MEMORY_CONTENTION', 'DDR_MEMORY', list(cores_involved), details
                     'DDR_MEMORY_CONTENTION', 'DDR_MEMORY', [access['core_id'] for access in accesses], details,cycle)
 
     return {
         'l2_contention_cycles': sorted(list(l2_contention_cycles)),
         'ddr_contention_cycles': sorted(list(ddr_contention_cycles)),
-        'total_contention_events': len(GlobalVar.shared_resource_events)
+        'total_contention_events': len(vars_.shared_resource_events)
     }
 
 # Example usage after simulation:

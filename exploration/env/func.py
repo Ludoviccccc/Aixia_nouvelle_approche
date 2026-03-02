@@ -12,6 +12,7 @@ class Experiment:
         num_banks = 4,
         num_addr = 20,
             ):
+        self.vars = Var()       
         self.num_banks = num_banks
         self.num_addr  = num_addr 
         self.num_rows = self.num_addr//16+1
@@ -29,10 +30,11 @@ class Experiment:
             tRC=30,     # Row Cycle time
             tWR=15,     # Write Recovery Time
             tRTP=8,     # Read to Precharge Time
-            tCCD=4)     # Column to Column Delay
+            tCCD=4,# Column to Column Delay
+            vars_=self.vars)     
 
         # Create interconnect, connected to the DDR Memory Controller
-        self.interconnect = Interconnect(self.ddr_controller, delay=5, bandwidth=4)
+        self.interconnect = Interconnect(self.ddr_controller, delay=5, bandwidth=4,vars_=self.vars)
 
         # Create cache configurations
         l1_conf = {'size': 32, 'line_size': 4, 'assoc': 2}
@@ -40,7 +42,7 @@ class Experiment:
 
 
         # Create shared L2 Cache, connected to the Interconnect
-        shared_l2 = CacheLevel("L2", core_id="anycore", memory=self.interconnect, **l2_conf)
+        shared_l2 = CacheLevel("L2", core_id="anycore", memory=self.interconnect, **l2_conf,vars_=self.vars)
 
         self.num_set = shared_l2.num_sets 
         self._index = shared_l2._index
@@ -52,8 +54,8 @@ class Experiment:
         self.mem_core1 = MultiLevelCache(1, l1_conf, shared_l2)
 
         # Create cores
-        self.core0 = Core(0, self.mem_core0)
-        self.core1 = Core(1, self.mem_core1)
+        self.core0 = Core(0, self.mem_core0,vars_=self.vars)
+        self.core1 = Core(1, self.mem_core1,vars_=self.vars)
     def add_time_values(self,values:dict[list]):
         if type(values['core0'])!=type(None):
                 self.time_values['core0'].append(values['core0'])
@@ -73,7 +75,7 @@ class Experiment:
         self.core1.load_instr(core1_inst)
 
     def simulate(self, cycles,display_stats=False):
-        GlobalVar.global_cycle = 0
+        self.vars.global_cycle = 0
         for cycle in range(cycles):
             # /!\ All components tick at the same frequency
             time0 = self.core0.tick()
@@ -84,7 +86,7 @@ class Experiment:
             self.add_time_values({'core0':time0,'core1':time1})
             self.ddr_memory_physical.tick()
             # Update global clock (shared variable)
-            GlobalVar.global_cycle+=1
+            self.vars.global_cycle+=1
 
         self.cache_stats_core_0 = self.mem_core0.stats()
         self.cache_stats_core_1 = self.mem_core1.stats()
@@ -124,7 +126,7 @@ class Experiment:
         denominator[denominator==0] = -1
         self.ratios = miss/(denominator)
         self.ratios[self.ratios<=0] = -1
-        self.analyze_interference_events = analyze_shared_resource_contention()
+        self.analyze_interference_events = analyze_shared_resource_contention(self.vars)
         if (np.sum(miss)+np.sum(hits))==0:
             self.miss_ratio_global =-1
         else:
@@ -155,82 +157,41 @@ class Experiment:
     def output_data(self):
         return {'time_core0':max(self.time_values['core0']),
                 'time_core1':max(self.time_values['core1']),
-                #'miss_ratios_detailled':self.ratios_tab,
-                #'miss_ratios_detailled_read':self.ratios_tab_read,
-                #'miss_ratios_detailled_write':self.ratios_tab_write,
-                #'miss_ratios_global': self.ratios,
                 'miss':self.miss_tab.sum(axis=0),
                 'hits':self.hits_tab.sum(axis=0),
                 'miss_read':self.miss_tab[0],
                 'hits_read':self.hits_tab[0],
                 'miss_write':self.miss_tab[1],
                 'hits_write':self.hits_tab[1],
-                #'L2_miss':self.cache_stats_core_0['L2']['misses'],
-                #'L2_hit': self.cache_stats_core_0['L2']['hits'],
-                #'L2_miss_write':self.cache_stats_core_0['L2']['misses_write'],
-                #'L2_miss_read':self.cache_stats_core_0['L2']['misses_read'],
-                #'L2_hit_write':self.cache_stats_core_0['L2']['hits_write'],
-                #'L2_hit_read':self.cache_stats_core_0['L2']['hits_read'],
-                'shared_ressource_events':GlobalVar.shared_resource_events,
+                'shared_ressource_events':self.vars.shared_resource_events,
                 }
-class Env:
-    def __init__(self,cycles,
-                 num_banks = 4,
-                 num_addr = 20,
-                ):
-        self.num_banks = num_banks
-        self.num_addr  = num_addr 
-        self.num_rows = self.num_addr//16#+1
-        self.cycles = cycles
-    def __call__(self, parameter:dict)->dict:
-        program  = Experiment(num_banks=self.num_banks,num_addr=self.num_addr)
-        program0 = Experiment(num_banks=self.num_banks,num_addr=self.num_addr)
-        program1 = Experiment(num_banks=self.num_banks,num_addr=self.num_addr)
-        program.load_instr(parameter["core0"], parameter["core1"])
-        program0.load_instr(parameter["core0"],[])
-        program1.load_instr([],parameter["core1"])
-        out = {}
-        GlobalVar.clear_history()
-        out['core0'] = program0.simulate(self.cycles)
-        out['core0'] = GlobalVar.ddr_access_log
-        GlobalVar.clear_history()
-        out['core1'] = program1.simulate(self.cycles)
-        out['core1'] = GlobalVar.ddr_access_log
-        GlobalVar.clear_history()
-        out['mutual'] = program.simulate(self.cycles)
-        out['mutual'] = GlobalVar.ddr_access_log
-        GlobalVar.clear_history()
-        #del out['core0']['time_core1']
-        #del out['core1']['time_core0']
-        #ddr targets
-        #out['mutual']['diff_time_core0'] = out['mutual']['time_core0'] - out['core0']['time_core0']
-        #out['mutual']['diff_time_core1'] = out['mutual']['time_core1'] - out['core1']['time_core1']
-        #out['mutual']['diff_time'] = out['mutual']['time_core1'] - out['mutual']['time_core0']
-        #out['mutual']['miss_core0'] = out['mutual']['miss'] - out['core0']['miss']
-        #out['mutual']['miss_core1'] = out['mutual']['miss'] - out['core1']['miss']
-        #out['mutual']['hits_core0'] = out['mutual']['hits'] - out['core0']['hits']
-        #out['mutual']['hits_core1'] = out['mutual']['hits'] - out['core1']['hits']
-        #out['mutual']['miss_read_core0'] = out['mutual']['miss_read'] - out['core0']['miss_read']
-        #out['mutual']['miss_read_core1'] = out['mutual']['miss_read'] - out['core1']['miss_read']
-        #out['mutual']['miss_write_core0'] = out['mutual']['miss_write'] - out['core0']['miss_write']
-        #out['mutual']['miss_write_core1'] = out['mutual']['miss_write'] - out['core1']['miss_write']
-        #out['mutual']['hits_read_core0'] = out['mutual']['hits_read'] - out['core0']['hits_read']
-        #out['mutual']['hits_read_core1'] = out['mutual']['hits_read'] - out['core1']['hits_read']
-        #out['mutual']['hits_write_core0'] = out['mutual']['hits_write'] - out['core0']['hits_write']
-        #out['mutual']['hits_write_core1'] = out['mutual']['hits_write'] - out['core1']['hits_write']
-        #L2 targets
-        #out['mutual']['L2_miss_core0'] = out['mutual']['L2_miss'] - out['core0']['L2_miss']
-        #out['mutual']['L2_hit_core0'] = out['mutual']['L2_hit'] - out['core0']['L2_hit']
-        #out['mutual']['L2_miss_core1'] = out['mutual']['L2_miss'] - out['core1']['L2_miss']
-        #out['mutual']['L2_hit_core1'] = out['mutual']['L2_hit'] - out['core1']['L2_hit']
-
-
-        #out['mutual']['L2_miss_read_core0'] = out['mutual']['L2_miss_read'] - out['core0']['L2_miss_read']
-        #out['mutual']['L2_hit_read_core0'] = out['mutual']['L2_hit_read'] - out['core0']['L2_hit_read']
-        #out['mutual']['L2_miss_read_core1'] = out['mutual']['L2_miss_read'] - out['core1']['L2_miss_read']
-        #out['mutual']['L2_hit_read_core1'] = out['mutual']['L2_hit_read'] - out['core1']['L2_hit_read']
-        #out['mutual']['L2_miss_write_core0'] = out['mutual']['L2_miss_write'] - out['core0']['L2_miss_write']
-        #out['mutual']['L2_hit_write_core0'] = out['mutual']['L2_hit_write'] - out['core0']['L2_hit_write']
-        #out['mutual']['L2_miss_write_core1'] = out['mutual']['L2_miss_write'] - out['core1']['L2_miss_write']
-        #out['mutual']['L2_hit_write_core1'] = out['mutual']['L2_hit_write'] - out['core1']['L2_hit_write']
-        return out
+#class Env:
+#    def __init__(self,cycles,
+#                 num_banks = 4,
+#                 num_addr = 20,
+#                ):
+#        self.num_banks = num_banks
+#        self.num_addr  = num_addr 
+#        self.num_rows = self.num_addr//16#+1
+#        self.cycles = cycles
+#    def __call__(self, parameter:dict)->dict:
+#        program  = Experiment(num_banks=self.num_banks,num_addr=self.num_addr)
+#        program0 = Experiment(num_banks=self.num_banks,num_addr=self.num_addr)
+#        program1 = Experiment(num_banks=self.num_banks,num_addr=self.num_addr)
+#        program.load_instr(parameter["core0"], parameter["core1"])
+#        program0.load_instr(parameter["core0"],[])
+#        program1.load_instr([],parameter["core1"])
+#        out = {}
+#        self.vars.clear_history()
+#        out['core0'] = program0.simulate(self.cycles)
+#        out['core0'] = self.vars.ddr_access_log
+#        self.vars.clear_history()
+#        out['core1'] = program1.simulate(self.cycles)
+#        out['core1'] = self.vars.ddr_access_log
+#        self.vars.clear_history()
+#        out['mutual'] = program.simulate(self.cycles)
+#        out['mutual'] = self.vars.ddr_access_log
+#        self.vars.clear_history()
+#        #del out['core0']['time_core1']
+#        #del out['core1']['time_core0']
+#        return out

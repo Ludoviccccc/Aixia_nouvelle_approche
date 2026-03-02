@@ -55,8 +55,8 @@ class Address_Management:
                 row = target_row
             address = self.address2loc.location2rand_addr(bank,row)
             instr_type = random.choice(instruction_types)
-            instructions[cycle] = (instr_type, address)
-            #instructions[cycle] = (instr_type, address,i)
+            #instructions[cycle] = (instr_type, address)
+            instructions[cycle] = (instr_type, address,i)
             instructions_adjoint[cycle] = (instr_type, (bank,row))
         
         return dict(sorted(instructions.items())),dict(sorted(instructions_adjoint.items()))
