@@ -2,10 +2,9 @@ import sys
 sys.path.append('../../')
 from simulator.sim3 import *
 import numpy as np
+import pandas as pd
 
 
-# Simulation setup
-#random.seed(0) # For reproducible results
 
 class Experiment:
     def __init__(self,
@@ -107,91 +106,20 @@ class Experiment:
             print('ddr miss', self.miss_tab)
         return self.output_data()
     def reorder(self):
-        hits = np.zeros(self.num_banks)
-        miss = np.zeros(self.num_banks)
-        type2id = lambda type_:0 if type_=='read' else 1
-        self.hits_tab = np.zeros((2,self.num_rows,self.num_banks))
-        self.miss_tab = np.zeros((2,self.num_rows,self.num_banks))
-        if 'row' in self.ddr_stats:
-            for j in range(len(self.ddr_stats['row'])):
-                if self.ddr_stats['status'][j]=='ROW MISS':
-                    miss[self.ddr_stats['bank'][j]] +=1
-                    self.miss_tab[type2id(self.ddr_stats['current_type'][j]),self.ddr_stats['row'][j],self.ddr_stats['bank'][j]] +=1
-                else:
-                    hits[self.ddr_stats['bank']] +=1
-                    self.hits_tab[type2id(self.ddr_stats['current_type'][j]),self.ddr_stats['row'][j],self.ddr_stats['bank'][j]] +=1
-
-
-        denominator = miss + hits
-        denominator[denominator==0] = -1
-        self.ratios = miss/(denominator)
-        self.ratios[self.ratios<=0] = -1
-        self.analyze_interference_events = analyze_shared_resource_contention(self.vars)
-        if (np.sum(miss)+np.sum(hits))==0:
-            self.miss_ratio_global =-1
-        else:
-            self.miss_ratio_global = np.sum(miss)/(np.sum(miss)+np.sum(hits))
-
-        denominator_tab  = self.miss_tab + self.hits_tab
-
-        denominator_tab_read = denominator_tab[0]
-        denominator_tab_write = denominator_tab[1]
-
-        denominator_tab = denominator_tab.sum(axis=0)
-
-        denominator_tab[denominator_tab==0] = -1
-        denominator_tab_read[denominator_tab_read==0] = -1
-        denominator_tab_write[denominator_tab_write==0] = -1
-
-        #self.ratios_tab = self.miss_tab/(denominator_tab)
-        self.ratios_tab = self.miss_tab.sum(axis=0)/(denominator_tab)
-        self.ratios_tab[self.ratios_tab<0] = -1
-
-        self.ratios_tab_read = self.miss_tab[0]/(denominator_tab_read)
-        self.ratios_tab_write = self.miss_tab[1]/(denominator_tab_write)
-        self.ratios_tab_read[self.ratios_tab_read<0] = -1
-        self.ratios_tab_write[self.ratios_tab_write<0] = -1
-
-        #details for shared cache miss ratio
-        #self.cache_miss_ratio_tab = sel
+        pass
     def output_data(self):
-        return {'time_core0':max(self.time_values['core0']),
+        ddr_access = pd.DataFrame([])
+        ddr_access['id'] = range(len(self.core0.inst))
+        ddr_access['row'] = [0]*len(self.core0.inst)
+        ddr_access['bank'] = [0]*len(self.core0.inst)
+        ddr_access['status'] = [0]*len(self.core0.inst)
+        in_ = pd.DataFrame(self.vars.access_ddr)
+        ddr_access.loc[self.vars.access_ddr['id'],ddr_access.keys()] = in_[['id','row','bank','status']].values
+        ddr_access.set_index('id',inplace=True)
+        #print(ddr_access)
+        return {
+                'time_core0':max(self.time_values['core0']),
                 'time_core1':max(self.time_values['core1']),
-                'miss':self.miss_tab.sum(axis=0),
-                'hits':self.hits_tab.sum(axis=0),
-                'miss_read':self.miss_tab[0],
-                'hits_read':self.hits_tab[0],
-                'miss_write':self.miss_tab[1],
-                'hits_write':self.hits_tab[1],
-                'shared_ressource_events':self.vars.shared_resource_events,
+                'ddr_simpl_vec_core0':ddr_access,
+                #'shared_resource_events':self.vars.shared_resource_events,
                 }
-#class Env:
-#    def __init__(self,cycles,
-#                 num_banks = 4,
-#                 num_addr = 20,
-#                ):
-#        self.num_banks = num_banks
-#        self.num_addr  = num_addr 
-#        self.num_rows = self.num_addr//16#+1
-#        self.cycles = cycles
-#    def __call__(self, parameter:dict)->dict:
-#        program  = Experiment(num_banks=self.num_banks,num_addr=self.num_addr)
-#        program0 = Experiment(num_banks=self.num_banks,num_addr=self.num_addr)
-#        program1 = Experiment(num_banks=self.num_banks,num_addr=self.num_addr)
-#        program.load_instr(parameter["core0"], parameter["core1"])
-#        program0.load_instr(parameter["core0"],[])
-#        program1.load_instr([],parameter["core1"])
-#        out = {}
-#        self.vars.clear_history()
-#        out['core0'] = program0.simulate(self.cycles)
-#        out['core0'] = self.vars.ddr_access_log
-#        self.vars.clear_history()
-#        out['core1'] = program1.simulate(self.cycles)
-#        out['core1'] = self.vars.ddr_access_log
-#        self.vars.clear_history()
-#        out['mutual'] = program.simulate(self.cycles)
-#        out['mutual'] = self.vars.ddr_access_log
-#        self.vars.clear_history()
-#        #del out['core0']['time_core1']
-#        #del out['core1']['time_core0']
-#        return out

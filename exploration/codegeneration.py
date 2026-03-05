@@ -37,7 +37,9 @@ class Address_Management:
         """
         if self.num_instructions is None:
             num_instructions = random.randint(2, self.max_instructions)  # Random number of instructions
-            # Ensure we don't generate more instructions than available cycles
+        else:
+            num_instructions = self.num_instructions
+        # Ensure we don't generate more instructions than available cycles
         num_instructions = min(num_instructions, self.max_cycle + 1)
         
         instructions = {}
@@ -57,6 +59,6 @@ class Address_Management:
             instr_type = random.choice(instruction_types)
             #instructions[cycle] = (instr_type, address)
             instructions[cycle] = (instr_type, address,i)
-            instructions_adjoint[cycle] = (instr_type, (bank,row))
+            instructions_adjoint[cycle] = (instr_type, (bank,row,i))
         
         return dict(sorted(instructions.items())),dict(sorted(instructions_adjoint.items()))
