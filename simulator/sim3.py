@@ -417,9 +417,9 @@ class DDRMemoryController:
 
         self.vars.log_ddr_access(best_req.core_id, best_req.addr, best_req.req_type,
                                self.ddr._get_bank(best_req.addr), self.ddr._get_row(best_req.addr), row_status,best_req.id_)
-        for cmd in candidates[1:]:
-            self.vars.log_ddr_access(cmd.core_id, cmd.addr, cmd.req_type,
-                               self.ddr._get_bank(cmd.addr), self.ddr._get_row(cmd.addr), 'waiting',best_req.id_)
+        #for cmd in candidates[1:]:
+        #    self.vars.log_ddr_access(cmd.core_id, cmd.addr, cmd.req_type,
+        #                       self.ddr._get_bank(cmd.addr), self.ddr._get_row(cmd.addr), 'waiting',best_req.id_)
 
         return {'completion_time': completion_time,
                 'row': row,
