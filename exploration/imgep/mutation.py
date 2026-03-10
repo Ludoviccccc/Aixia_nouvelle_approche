@@ -4,13 +4,9 @@ import sys
 sys.path.append('../../')
 from exploration.codegeneration import Address_Management
 def mutate_instruction_sequence(instructions, 
-                                    address_management:Address_Management,
+                                    addr_management:Address_Management,
                                     num_mutations=1,
                                     max_cycle=60,
-                                    min_row = 0,
-                                    max_row= 1,
-                                    min_bank = 1,
-                                    max_bank=4,
                                     num_instructions=None,
                                     ):
     """
@@ -48,8 +44,6 @@ def mutate_instruction_sequence(instructions,
             new_cycle = random.choice(available_cycles)
             instr_type = random.choice(instruction_types)
             new_bank,new_row = random.choice(addr_management.address2loc.available_rows)
-            #row = random.randint(min_row, max_row)
-            #address = random.randint(min_address, max_address)
             mutated[new_cycle] = (instr_type, new_row,new_bank)
             available_cycles.remove(new_cycle)
             
@@ -62,7 +56,7 @@ def mutate_instruction_sequence(instructions,
         elif mutation_type == 'modify' and mutated:
             # Modify an existing instruction
             cycle_to_modify = random.choice(list(mutated.keys()))
-            old_type, old_row,old_bank = mutated[cycle_to_modify]
+            old_type, (old_row,old_bank,id_old) = mutated[cycle_to_modify]
             
             # Choose what to modify: type, address, or both
             modify_choice = random.choice(['type', 'address', 'both'])
@@ -70,18 +64,18 @@ def mutate_instruction_sequence(instructions,
             if modify_choice == 'type':
                 # Change instruction type only
                 new_type = 'write' if old_type == 'read' else 'read'
-                mutated[cycle_to_modify] = (new_type, old_row,old_bank)
+                mutated[cycle_to_modify] = (new_type, (old_row,old_bank,id_old))
             elif modify_choice == 'address':
                 # Change address only
                 new_bank,new_row = random.choice(addr_management.address2loc.available_rows)
                 #new_address = random.randint(min_address, max_address)
-                mutated[cycle_to_modify] = (old_type, new_row,new_bank)
+                mutated[cycle_to_modify] = (old_type, (new_row,new_bank,id_old))
             else:
                 # Change both type and address
                 new_type = 'write' if old_type == 'read' else 'read'
                 new_bank,new_row = random.choice(addr_management.address2loc.available_rows)
                 #new_address = random.randint(min_address, max_address)
-                mutated[cycle_to_modify] = (new_type, new_row,new_bank)
+                mutated[cycle_to_modify] = (new_type, (new_row,new_bank,id_old))
     if len(mutated)>num_instructions:
         to_del = random.sample(list(mutated.keys()),len(mutated)- num_instructions)
         for k in to_del:

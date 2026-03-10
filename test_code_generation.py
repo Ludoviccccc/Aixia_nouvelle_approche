@@ -26,13 +26,13 @@ min_address = 0
 max_address = 19
 num_instructions = 5
 k = 3
-policy = OptimizationPolicykNN(k=k,min_address=min_address,max_address = max_address)
 addr_management = Address_Management(max_instructions=10,
                                     min_address=min_address,
                                     max_address=max_address,
                                     num_banks=num_banks,
                                     num_addr=num_addr,
                                     num_instructions=num_instructions)
+policy = OptimizationPolicykNN(addr_management,k=k,min_address=min_address,max_address = max_address)
 
 #
 #dt_tab = []
@@ -52,7 +52,7 @@ addr_management = Address_Management(max_instructions=10,
 
 
 bank,row = random.choice(addr_management.address2loc.available_rows)
-print(f'(bank,row) = ({bank},{row}')
+print(f'(bank,row) = ({bank},{row})')
 
 history = History(length_ = num_instructions)
 
@@ -60,7 +60,7 @@ for _ in range(5):
 
     experiment = Experiment(num_banks=num_banks,num_addr=num_addr)
     program, adjoint_program = addr_management.generate_instruction_sequence(bank,row)
-    print(adjoint_program)
+    #print(adjoint_program)
     #print_dict(adjoint_program)
     experiment.load_instr(core0_inst=program,core1_inst=[])
     output = experiment.simulate(400)
@@ -72,6 +72,7 @@ for _ in range(5):
                 },(bank,row))
 
 
+print_dict(adjoint_program)
 #experiment = Experiment(num_banks=num_banks,num_addr=num_addr)
 #shorter_program = {key:program[key] for j,key in enumerate(program) if j<len(program)-1}
 #shorter_program = cut_program(program,len(program)-1) 
@@ -83,5 +84,5 @@ for _ in range(5):
 #
 goal = np.random.randint(1,3,(5,3))
 output = policy.select_closest_codes(history,goal,(bank,row))
-#policy.
-#print(output)
+#mutated = policy.light_code_mutation(adjoint_program)
+#print_dict(mutated)

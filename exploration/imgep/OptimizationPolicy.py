@@ -17,7 +17,7 @@ class OptimizationPolicykNN(test_programs):
                 max_address = 10,
                 num_parts = 2,
                 segment_method=True,
-                num_instructions=None,
+                num_instructions=10,
                 ):
         super().__init__()
         self.segment_method = segment_method
@@ -28,6 +28,7 @@ class OptimizationPolicykNN(test_programs):
         self.num_mutations = num_mutations
         self.max_cycle = max_cycle
         self.num_instructions = num_instructions
+        self.address_management = address_management
 
 
 
@@ -85,4 +86,7 @@ class OptimizationPolicykNN(test_programs):
 
 
     def light_code_mutation(self,program):
-        mutated = mutate_instruction_sequence(program,)
+        '''slight random mutations using the bank and row informations
+        '''
+        mutated = mutate_instruction_sequence(program,self.address_management,num_mutations=self.num_mutations,max_cycle=self.max_cycle,num_instructions=self.num_instructions)
+        return mutated
