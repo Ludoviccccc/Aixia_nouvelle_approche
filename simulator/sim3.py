@@ -23,7 +23,6 @@ class Var:
         self.global_cycle = 0
         # New: Track shared resource contention
         self.shared_resource_events = []
-        self.l2_access_log = []  # Track L2 cache accesses
 
         self.access_ddr = {
             'cycle': [],
@@ -35,8 +34,80 @@ class Var:
             'status': [],
             'id':[],
         }
-     
-    #@classmethod
+
+        self.hits = {"L1":{},"L2":{}}
+        self.misses = {"L1":{},"L2":{}}
+        self.events = {"L1":{},"L2":{}}
+        self.step = 10
+        self.count = 0
+    def log_event(self,
+            type_:str,
+            cycle:int,
+            level:str,
+            core_id:int,
+            addr:int,
+            way:int,
+            operation:str,
+            id_:int,
+            ):
+        access = {
+                "cycle":cycle,
+                "type":type_,
+                #"code_id":core_id,
+                #"way":way,
+                "operation":operation,
+                "instr_id":id_,
+                }
+        #add to self.events dictionary
+        if addr not in self.events[level]:
+            self.events[level][addr] = [access]
+        else:
+            self.events[level][addr].append(access)
+        if type_=="miss":
+            #add to self.misses dictionary
+            if addr not in self.misses[level]:
+                self.misses[level][addr] = {id_//self.step:1}
+            else:
+                if id_//self.step in self.misses[level][addr]:
+                    self.misses[level][addr][id_//self.step] += 1
+                else:
+                    self.misses[level][addr][id_//self.step] = 1
+        if type_=="hit":
+            #add to self.misses dictionary
+            if addr not in self.hits[level]:
+                self.hits[level][addr] = {id_//self.step:1}
+            else:
+                if id_//self.step in self.hits[level][addr]:
+                    self.hits[level][addr][id_//self.step] += 1
+                else:
+                    self.hits[level][addr][id_//self.step] = 1
+        if level=='L1':
+            self.count +=1
+    def log_eviction(self,
+                    cycle,
+                    level,
+                    core_id,
+                    evicted_addr,
+                    way,
+                    dirty,
+                    operation,
+                    reason="miss_replacement",
+                    id_=0,
+                    ):
+        access = {
+                    "type":"eviction",
+                    "code_id":core_id,
+                    "way":way,
+                    "operation":operation,
+                    "cycle":cycle,
+                    "dirty":dirty,
+                    "instr_id":id_,
+                }
+        if evicted_addr not in self.events[level]:
+            self.events[level][evicted_addr] = [access]
+        else:
+            self.events[level][evicted_addr].append(access)
+    
     def log_shared_resource_event(self, event_type, resource_type, initiators, details,cycle):
         """Log when multiple initiators access shared resources simultaneously"""
         event = {
@@ -48,23 +119,6 @@ class Var:
         }
         self.shared_resource_events.append(event)
     
-    #@classmethod
-    def log_l2_access(self, core_id, addr, operation, set_index, way, hit):
-        """Log L2 cache access for contention analysis"""
-
-        cycle = self.global_cycle
-        access = {
-            'cycle': cycle,
-            'core_id': core_id,
-            'addr': addr,
-            'operation': operation,
-            'set_index': set_index,
-            'way': way,
-            'hit': hit
-        }
-        self.l2_access_log.append(access)
-    
-    #@classmethod
     def log_ddr_access(self, core_id, addr, operation, bank, row, status,id_):
         """Log DDR memory access for contention analysis"""
         cycle = self.global_cycle
@@ -86,11 +140,9 @@ class Var:
         self.access_ddr['row'].append(row)
         self.access_ddr['status'].append(status)
         self.access_ddr['id'].append(id_)
-    #@classmethod
     def clear_history(self):
         self.global_cycle = 0
         self.shared_resource_events = []
-        self.l2_access_log = []  # Track L2 cache accesses
 # -----------------------------------------------------
 # CacheLine: Represents a single cache line in the cache hierarchy
 # -----------------------------------------------------
@@ -595,17 +647,10 @@ class CacheLevel:
         plru = self.plru_trees[index]
 				
         #print(f"{self.vars.global_cycle}: [Cache {self.level}] READ@{addr} from {self.core_id}")
-
-        # Track L2 access for shared cache analysis
-        #if self.level == "L2":
-        #    self.vars.log_l2_access(origine, addr, 'read', index, -1, False)  # way not known yet
-
         # Seach the tag in the cache set
         for i, line in enumerate(cache_set):
             if line.valid and line.tag == tag:
-
-                if self.level == "L2":
-                    self.vars.log_l2_access(origine, addr, 'read', index, i, True)
+                print('632','tag',f'{line.tag}')
                 # There is a hit.
                 # Trace event
                 #print(f"{self.vars.global_cycle}: [Cache {self.level}] READ HIT@{addr} from {self.core_id}")
@@ -620,13 +665,35 @@ class CacheLevel:
 
                 callback()
 
+                #----------------------------------------------------------------------------------------------------
+                # In CacheLevel.read(), on hit:
+                self.vars.log_event(
+                    type_="hit",
+                    cycle=self.vars.global_cycle,
+                    level=self.level,
+                    core_id=self.core_id,
+                    addr=addr,
+                    way=i,
+                    operation="read",
+                    id_ = id_,
+                )
+                #----------------------------------------------------------------------------------------------------
+
                 return
 
         # Cache miss...
 
         # Cache miss
-        if self.level == "L2":
-            self.vars.log_l2_access(origine, addr, 'read', index, -1, False)
+        self.vars.log_event(
+                        type_="miss",
+                        cycle = self.vars.global_cycle,
+                        level = self.level,
+                        core_id = self.core_id,
+                        addr= addr,
+                        way = i,
+                        operation= 'read',
+                        id_=id_
+                        )
         # Trace event
         #print(f"{self.vars.global_cycle}: [Cache {self.level}] READ MISS@{addr} from {self.core_id}")
         
@@ -639,17 +706,40 @@ class CacheLevel:
         victim_idx = plru.get_victim()
         victim_line = cache_set[victim_idx]
 
+
         # If the victim line is valid and dirty, we have to write the data to
         # the next level of memory before loading the cache entry with the
         # data.
+        if self.write_allocate:
+            if victim_line.valid and self.write_back:
+                victim_addr = ((victim_line.tag * self.num_sets) + index) * self.line_size
+                # Write evicted data if dirty
+                #----------------------------------------------------------------------------------------------------
+                # LOG THIS EVICTION
+                self.vars.log_eviction(
+                    cycle=self.vars.global_cycle,
+                    level=self.level,
+                    core_id=self.core_id,
+                    evicted_addr=victim_addr,
+                    way = self._index(victim_addr),
+                    dirty=victim_line.dirty,
+                    operation = 'read',
+                    reason="miss_replacement",
+                    id_=id_,
+                )
+                #----------------------------------------------------------------------------------------------------
         def lower_cb():
-            # Write evicted data if dirty
+
             if victim_line.valid and victim_line.dirty and self.write_back:
                 victim_addr = ((victim_line.tag * self.num_sets) + index) * self.line_size
+
                 if self.lower:
                     self.lower.write(victim_addr,origine = self.core_id,id_=id_) 
                 elif self.memory: # If L2, send to interconnect
                     self.memory.request(MemoryRequest(origine, self.memory.cycle, 'write', victim_addr, callback=None,id_=id_))
+
+
+
             # Now that we have written the data to the next memory level, the
             # cache entry is updated
             victim_line.valid = True
@@ -677,14 +767,10 @@ class CacheLevel:
 
         #print(f"{self.vars.global_cycle}: [Cache {self.level}] WRITE@{addr} from {self.core_id}")
         # Track L2 access for shared cache analysis
-        #if self.level == "L2":
-        #    self.vars.log_l2_access(origine, addr, 'write', index, -1, False)
 
         for i, line in enumerate(cache_set):
             if line.valid and line.tag == tag:
                # Cache hit
-                if self.level == "L2":
-                    self.vars.log_l2_access(origine, addr, 'write', index, i, True)
                 # There is a cache hit
                 # Trace event
                 #print(f"{self.vars.global_cycle}: [Cache {self.level}] WRITE HIT@{addr} from {self.core_id}")
@@ -705,12 +791,34 @@ class CacheLevel:
                     elif self.memory: # If L2, send to interconnect
                         self.memory.request(MemoryRequest(origine, self.memory.cycle, 'write', addr,id_=id_))
                 
+                #----------------------------------------------------------------------------------------------------
+                # In CacheLevel.read(), on hit:
+                self.vars.log_event(
+                    type_="hit",
+                    cycle=self.vars.global_cycle,
+                    level=self.level,
+                    core_id=self.core_id,
+                    addr=addr,
+                    way=i,
+                    operation="write",
+                    id_ = id_,
+                )
+                #----------------------------------------------------------------------------------------------------
+
                 return
 
         # There is a cache miss...
         # Cache miss
-        if self.level == "L2":
-            self.vars.log_l2_access(origine, addr, 'write', index, -1, False)
+        self.vars.log_event(
+                    type_="miss",
+                    cycle=self.vars.global_cycle,
+                    level=self.level,
+                    core_id=self.core_id,
+                    addr=addr,
+                    way=i,
+                    operation="write",
+                    id_ = id_,
+                )
         # Trace event
         #print(f"{self.vars.global_cycle}: [Cache {self.level}] WRITE MISS@{addr} from {self.core_id}")
         
@@ -725,8 +833,27 @@ class CacheLevel:
             # If we are in write-back mode and the cache line is dirty,
             # it has to be written to the lower level of the memory hierarchy
             # before being overwritten.
-            if victim_line.valid and victim_line.dirty and self.write_back:
+            print('self.line_size:',self.line_size)
+            #print('tag',victim_line.tag)
+            #print('self.line.valid,',victim_line.valid)
+            if victim_line.valid and self.write_back:
                 victim_addr = ((victim_line.tag * self.num_sets) + index) * self.line_size
+                #----------------------------------------------------------------------------------------------------
+                # LOG THIS EVICTION
+                self.vars.log_eviction(
+                    cycle=self.vars.global_cycle,
+                    level=self.level,
+                    core_id=self.core_id,
+                    evicted_addr=victim_addr,
+                    way = self._index(victim_addr),
+                    #evicted_tag=victim_line.tag,
+                    dirty=victim_line.dirty,
+                    operation = 'write',
+                    reason="miss_replacement",
+                    id_=id_,
+                )
+                #----------------------------------------------------------------------------------------------------
+            if victim_line.valid and victim_line.dirty and self.write_back:
                 if self.lower:
                     self.lower.write(victim_addr,origine=self.core_id,id_=id_)
                 elif self.memory: # If L2, send to interconnect
@@ -907,7 +1034,6 @@ def print_contention_analysis():
 
     print("\n=== SHARED RESOURCE CONTENTION ANALYSIS ===")
     print(f"Total contention events: {analysis['total_contention_events']}")
-    print(f"L2 cache contention cycles: {len(analysis['l2_contention_cycles'])}")
     print(f"DDR memory contention cycles: {len(analysis['ddr_contention_cycles'])}")
 
     print("\n=== DETAILED CONTENTION EVENTS ===")

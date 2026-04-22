@@ -52,6 +52,9 @@ class Experiment:
         self.mem_core0 = MultiLevelCache(0, l1_conf, shared_l2)
         self.mem_core1 = MultiLevelCache(1, l1_conf, shared_l2)
 
+        self.mem_core0.l1.vars = self.vars
+        self.mem_core1.l1.vars = self.vars
+
         # Create cores
         self.core0 = Core(0, self.mem_core0,vars_=self.vars)
         self.core1 = Core(1, self.mem_core1,vars_=self.vars)

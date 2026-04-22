@@ -81,7 +81,7 @@ print_dict(adjoint_program)
 #output = experiment.simulate(400)
 #dt = output['ddr_simpl_vec_core0']
 #print(dt)
-#
+
 goal = np.random.randint(1,3,(5,3))
 output = policy.select_closest_codes(history,goal,(bank,row))
 #mutated = policy.light_code_mutation(adjoint_program)
