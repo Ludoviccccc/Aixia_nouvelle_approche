@@ -974,7 +974,55 @@ class Core:
                 return True 
         return False
 
+    def tick(self):
+        
 
+        # If the core is waiting for a previous access to complete, it cannot issue a new request
+        # We consider all dependencies between instruction in RAW, WAR and WAW on addresses.
+        if self.stall_op:
+            op, addr,id_ = self.stall_op
+            if not self.dependency(op, addr):
+                #print(f"{self.vars.global_cycle}: [Core {self.core_id}] Resuming stalled {op.upper()}@{addr}")
+                if op == 'write':
+                    self.write(addr,id_=id_)
+                    self.stall_op = None
+                elif op == 'read':
+                    self.enqueue_access('read', addr)
+                    self.read(addr, lambda addr=addr: self.dequeue_access('read', addr),id_=id_)
+                    self.stall_op = None
+            else:
+                #print(f"{self.vars.global_cycle}: [Core {self.core_id}] Still stalled on {op.upper()}@{addr} due to dependency")
+                return 
+            return self.vars.global_cycle
+
+        # Check if there is an instruction to execute
+        if self.vars.global_cycle in self.inst:
+            op,addr,id_ = self.inst[self.vars.global_cycle]
+            if op=='write':
+                if self.dependency('write', addr):
+                    # There is a pending access with dependency, we stall
+                    #print(f"{self.vars.global_cycle}: [Core {self.core_id}] WRITE@{addr} stalled due to dependency")
+                    self.stall_op = ('write', addr,id_)
+                    return 
+                else:
+                    #print(f"{self.vars.global_cycle}: [Core {self.core_id}] WRITE op at @{addr}")
+                    self.write(addr,id_=id_)             
+                    return self.vars.global_cycle
+            else:
+                if self.dependency('read', addr):
+                    # There is a pending access with dependency, we stall
+                    #print(f"{self.vars.global_cycle}: [Core {self.core_id}] READ@{addr} stalled due to dependency")
+                    self.stall_op = ('read', addr,id_)
+                    return
+                else:
+                    #print(f"{self.vars.global_cycle}: [Core {self.core_id}] READ op at @{addr}")
+                    self.enqueue_access('read', addr)
+                    self.read(addr, lambda addr=addr: self.dequeue_access('read', addr),id_=id_)
+                    return self.vars.global_cycle
+        else:
+             # IDLE cycle, do nothing.
+            #print(f"{self.vars.global_cycle}: [Core {self.core_id}] IDLE cycle")
+            pass
 
 # Example usage after simulation:
 def print_contention_analysis():
