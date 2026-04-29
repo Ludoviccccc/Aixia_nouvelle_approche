@@ -58,6 +58,8 @@ class Var:
                 "operation":operation,
                 "instr_id":id_,
                 }
+        if level=='L1':
+            print('id',id_)
         #add to self.events dictionary
         if addr not in self.events[level]:
             self.events[level][addr] = [access]
@@ -81,6 +83,7 @@ class Var:
                     self.hits[level][addr][id_//self.step] += 1
                 else:
                     self.hits[level][addr][id_//self.step] = 1
+        print('level', level)
         if level=='L1':
             self.count +=1
     def log_eviction(self,
@@ -251,7 +254,6 @@ class Interconnect:
         self.queue = []               # Queue of pending memory requests (ready_time, request)
         self.delay = delay            # Base delay before forwarding to DDR controller
         self.bandwidth = bandwidth    # Max number of requests per cycle
-        self.cycle = 0
 
     # Push a request into the interconnect queue.
     # We push the tuple (ready_time, request) where ready_time is the earliest
@@ -260,7 +262,7 @@ class Interconnect:
         
 
         # Add a random component to the delay for more realistic simulation
-        ready_time = self.cycle + self.delay + random.randint(0, 2)
+        ready_time = self.vars.cycle + self.delay + random.randint(0, 2)
         heapq.heappush(self.queue, (ready_time, req))
 
         #print(f"{self.vars.global_cycle}: [Interconnect] Request {req.req_type.upper()}@{req.addr} from core {req.core_id} queued, to be released at {ready_time}")
@@ -272,7 +274,7 @@ class Interconnect:
         requests_to_forward = []
 
         # Identify requests ready to be forwarded to the memory controller, respecting bandwidth
-        while self.queue and self.queue[0][0] <= self.cycle and processed < self.bandwidth:
+        while self.queue and self.queue[0][0] <= self.vars.cycle and processed < self.bandwidth:
             ready_time, req = heapq.heappop(self.queue)
             requests_to_forward.append(req)
             processed += 1
@@ -282,7 +284,6 @@ class Interconnect:
             #print(f"{self.vars.global_cycle}: [Interconnect] Request {req} sent to memory controller")
             self.memory_controller.request(req)
 
-        self.cycle += 1
 
 
 # ---------------------------------------------------------
@@ -296,7 +297,6 @@ class DDRMemoryController:
         self.ddr = ddr_model
         self.queue = []  # Requests waiting to be scheduled by the controller
         self.scheduled_ddr_requests = [] # Requests passed to DDR, waiting for completion
-        self.cycle = 0
 
         # DDR timing parameters (example values)
         self.tRCD = tRCD    # Row to Column Delay
@@ -331,7 +331,6 @@ class DDRMemoryController:
         # Then, schedule a new request if possible
         output = self._schedule_next_request()
 
-        self.cycle += 1
 
         return output
 
@@ -342,7 +341,7 @@ class DDRMemoryController:
         completed = []
         for req_info in self.scheduled_ddr_requests:
             req = req_info['request']
-            if req.completion_time <= self.cycle:
+            if req.completion_time <= self.vars.cycle:
                 if req.req_type == 'read':
                     _ = self.ddr.memory.get(req.addr, 0) # Read value from DDR model
                     #print(f"{self.vars.global_cycle}: [DDR controller] READ@{req.addr} complete")
@@ -378,13 +377,13 @@ class DDRMemoryController:
             row = self.ddr._get_row(req.addr)
 
             # Check if bank is available (not in precharge)
-            if self.bank_precharge_complete_time[bank] > self.cycle:
+            if self.bank_precharge_complete_time[bank] > self.vars.cycle:
                 continue
 
             # Check for intra-bank constraints (e.g., tRC for ACT commands, tCCD for consecutive RD/WR to same bank)
             # This is a simplified check for illustration
             last_cmd_time = self.last_command_time.get(bank, -self.tRC) # Default if no previous command
-            if self.cycle < last_cmd_time + self.tCCD: # Basic command-to-command delay
+            if self.vars.cycle < last_cmd_time + self.tCCD: # Basic command-to-command delay
                  continue
 
             self.sequence_ddr.append({'stage':'ready','cycle':self.vars.global_cycle,'type':req.req_type.upper(),'core':req.core_id,'addr':req.addr})
@@ -421,7 +420,7 @@ class DDRMemoryController:
             delay = self.tRP + self.tRCD + self.tCAS # ACT (tRCD) + PRE (tRP) + CAS
             #row_status = "ROW MISS"
             row_status = -1
-            self.bank_precharge_complete_time[bank] = self.cycle + self.tRP # Bank busy during precharge
+            self.bank_precharge_complete_time[bank] = self.vars.cycle + self.tRP # Bank busy during precharge
             self.bank_open_row[bank] = row # Update opened row for the bank
 
         # Add transition penalties (WR->RD or RD->WR)
@@ -438,13 +437,13 @@ class DDRMemoryController:
                 delay += self.tWR + 2
                 #print(f"{self.vars.global_cycle}: [DDR] Applying RD->WR transition penalty for Bank {bank}")
 
-        completion_time = self.cycle + delay
+        completion_time = self.vars.cycle + delay
 
 
 
 
         # Update controller's state after scheduling
-        self.last_command_time[bank] = self.cycle
+        self.last_command_time[bank] = self.vars.cycle
         self.last_access_command[bank] = best_req.req_type
         self.last_access_addr[bank] = best_req.addr
 
@@ -461,7 +460,7 @@ class DDRMemoryController:
         self.sequence_ddr.append({'stage':'scheduling','cycle':self.vars.global_cycle,'type':req.req_type.upper(),'core':req.core_id,'addr':req.addr})
 
         # Pass the request to the DDR
-        best_req.time = self.cycle # Update request time to when it's issued to DDR
+        best_req.time = self.vars.cycle # Update request time to when it's issued to DDR
         best_req.completion_time = completion_time
         self.ddr.request(best_req) # DDR will now track its internal completion
         self.scheduled_ddr_requests.append({'request': best_req, 'bank': bank, 'row': row, 'status': row_status})
@@ -494,10 +493,11 @@ class DDRState(Enum):
 # DDR Memory Model
 #---------------------------------------------------------
 class DDRMemory:
-    def __init__(self, num_banks=4):
+    def __init__(self, num_banks=4,vars_=None):
+        self.vars = vars_
         self.num_banks = num_banks
         self.memory = {} # Actual data storage (addr -> value)
-        self.cycle = 0
+        self.vars.cycle = 0
         # [TODO] Provide real latency values
         self.base_latency = 0
         self.row_hit_latency = 0
@@ -568,7 +568,7 @@ class DDRMemory:
     def tick(self):
         
         # Process scheduled completions
-        while self.scheduled_completions and self.scheduled_completions[0][0] <= self.cycle:
+        while self.scheduled_completions and self.scheduled_completions[0][0] <= self.vars.cycle:
             completion_time, req = heapq.heappop(self.scheduled_completions)
             bank = self._get_bank(req.addr)
 
@@ -586,19 +586,18 @@ class DDRMemory:
 
         # Update FSM timers for each bank
         for i in range(self.num_banks):
-            if self.bank_timers[i] > self.cycle:
+            if self.bank_timers[i] > self.vars.cycle:
                 # Timer still running, nothing to do for this cycle
                 pass
             elif self.bank_states[i] == DDRState.ACTIVATE_BANK_ROW:
                 # If a bank is active and its previous command timer expired, it's ready for another
                 # READ/WRITE or can be PRECHARGED by the controller.
                 pass # Stays in ACTIVATE_BANK_ROW until controller issues next command
-            elif self.bank_states[i] == DDRState.PRECHARGING and self.bank_timers[i] <= self.cycle:
+            elif self.bank_states[i] == DDRState.PRECHARGING and self.bank_timers[i] <= self.vars.cycle:
                 self.bank_states[i] = DDRState.IDLE
                 self.bank_open_row[i] = None
                 #print(f"{self.vars.global_cycle}: [DDR] Bank {i} transition: PRECHARGING -> IDLE")
 
-        self.cycle += 1
 
 #---------------------------------------
 # Models one level in the cache hierarchy
@@ -650,7 +649,6 @@ class CacheLevel:
         # Seach the tag in the cache set
         for i, line in enumerate(cache_set):
             if line.valid and line.tag == tag:
-                print('632','tag',f'{line.tag}')
                 # There is a hit.
                 # Trace event
                 #print(f"{self.vars.global_cycle}: [Cache {self.level}] READ HIT@{addr} from {self.core_id}")
@@ -663,7 +661,6 @@ class CacheLevel:
                 # Update the pLRU tree to point away from the MRU
                 plru.update_on_access(i)
 
-                callback()
 
                 #----------------------------------------------------------------------------------------------------
                 # In CacheLevel.read(), on hit:
@@ -678,6 +675,7 @@ class CacheLevel:
                     id_ = id_,
                 )
                 #----------------------------------------------------------------------------------------------------
+                callback()
 
                 return
 
@@ -736,7 +734,7 @@ class CacheLevel:
                 if self.lower:
                     self.lower.write(victim_addr,origine = self.core_id,id_=id_) 
                 elif self.memory: # If L2, send to interconnect
-                    self.memory.request(MemoryRequest(origine, self.memory.cycle, 'write', victim_addr, callback=None,id_=id_))
+                    self.memory.request(MemoryRequest(origine, self.memory.vars.cycle, 'write', victim_addr, callback=None,id_=id_))
 
 
 
@@ -754,7 +752,7 @@ class CacheLevel:
             self.lower.read(addr, lower_cb,origine=self.core_id,id_=id_)
         # Or to Interconnect (which then sends to DDR Controller)
         elif self.memory:
-            self.memory.request(MemoryRequest(origine, self.memory.cycle, 'read', addr, lower_cb,id_= id_))
+            self.memory.request(MemoryRequest(origine, self.memory.vars.cycle, 'read', addr, lower_cb,id_= id_))
 
     # Handles cache write request
     def write(self, addr,origine=None,id_=None):
@@ -976,55 +974,6 @@ class Core:
                 return True 
         return False
 
-    def tick(self):
-        
-
-        # If the core is waiting for a previous access to complete, it cannot issue a new request
-        # We consider all dependencies between instruction in RAW, WAR and WAW on addresses.
-        if self.stall_op:
-            op, addr,id_ = self.stall_op
-            if not self.dependency(op, addr):
-                #print(f"{self.vars.global_cycle}: [Core {self.core_id}] Resuming stalled {op.upper()}@{addr}")
-                if op == 'write':
-                    self.write(addr,id_=id_)
-                    self.stall_op = None
-                elif op == 'read':
-                    self.enqueue_access('read', addr)
-                    self.read(addr, lambda addr=addr: self.dequeue_access('read', addr),id_=id_)
-                    self.stall_op = None
-            else:
-                #print(f"{self.vars.global_cycle}: [Core {self.core_id}] Still stalled on {op.upper()}@{addr} due to dependency")
-                return 
-            return self.vars.global_cycle
-
-        # Check if there is an instruction to execute
-        if self.vars.global_cycle in self.inst:
-            op,addr,id_ = self.inst[self.vars.global_cycle]
-            if op=='write':
-                if self.dependency('write', addr):
-                    # There is a pending access with dependency, we stall
-                    #print(f"{self.vars.global_cycle}: [Core {self.core_id}] WRITE@{addr} stalled due to dependency")
-                    self.stall_op = ('write', addr,id_)
-                    return 
-                else:
-                    #print(f"{self.vars.global_cycle}: [Core {self.core_id}] WRITE op at @{addr}")
-                    self.write(addr,id_=id_)             
-                    return self.vars.global_cycle
-            else:
-                if self.dependency('read', addr):
-                    # There is a pending access with dependency, we stall
-                    #print(f"{self.vars.global_cycle}: [Core {self.core_id}] READ@{addr} stalled due to dependency")
-                    self.stall_op = ('read', addr,id_)
-                    return
-                else:
-                    #print(f"{self.vars.global_cycle}: [Core {self.core_id}] READ op at @{addr}")
-                    self.enqueue_access('read', addr)
-                    self.read(addr, lambda addr=addr: self.dequeue_access('read', addr),id_=id_)
-                    return self.vars.global_cycle
-        else:
-             # IDLE cycle, do nothing.
-            #print(f"{self.vars.global_cycle}: [Core {self.core_id}] IDLE cycle")
-            pass
 
 
 # Example usage after simulation:

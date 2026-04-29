@@ -8,17 +8,18 @@ import pandas as pd
 
 class Experiment:
     def __init__(self,
+        vars_,
         num_banks = 4,
         num_addr = 20,
             ):
-        self.vars = Var()       
+        self.vars = vars_
         self.num_banks = num_banks
         self.num_addr  = num_addr 
         self.num_rows = self.num_addr//16+1
         self.ddr_stats = {}
         self.time_values = {'core0':[0],'core1':[0]}
         # Instantiate the DDR Memory
-        self.ddr_memory_physical = DDRMemory(num_banks=self.num_banks)
+        self.ddr_memory_physical = DDRMemory(num_banks=self.num_banks,vars_ = self.vars)
 
         # Instantiate the DDR Memory Controller, connected to the physical DDR
         self.ddr_controller = DDRMemoryController(
@@ -77,18 +78,19 @@ class Experiment:
         self.core1.load_instr(core1_inst)
 
     def simulate(self, cycles,display_stats=False):
-        self.vars.global_cycle = 0
         for cycle in range(cycles):
             # /!\ All components tick at the same frequency
             time0 = self.core0.tick()
             time1 = self.core1.tick()
             self.interconnect.tick()
             ddr_stats = self.ddr_controller.tick()
+            self.ddr_memory_physical.tick()
+
             self.add_values(ddr_stats)
             self.add_time_values({'core0':time0,'core1':time1})
-            self.ddr_memory_physical.tick()
             # Update global clock (shared variable)
             self.vars.global_cycle+=1
+
 
         self.cache_stats_core_0 = self.mem_core0.stats()
         self.cache_stats_core_1 = self.mem_core1.stats()
