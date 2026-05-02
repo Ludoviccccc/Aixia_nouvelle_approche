@@ -90,6 +90,7 @@ class Experiment:
             self.add_time_values({'core0':time0,'core1':time1})
             # Update global clock (shared variable)
             self.vars.global_cycle+=1
+            self.vars.cycle = self.vars.global_cycle
 
 
         self.cache_stats_core_0 = self.mem_core0.stats()

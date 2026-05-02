@@ -33,39 +33,36 @@ addr_management = Address_Management(max_instructions=10,
                                     num_banks=num_banks,
                                     num_addr=num_addr,
                                     num_instructions=num_instructions)
-#policy = OptimizationPolicykNN(addr_management,k=k,min_address=min_address,max_address = max_address)
 
 
 
 bank,row = random.choice(addr_management.address2loc.available_rows)
 print(f'(bank,row) = ({bank},{row})')
 
-history = History(length_ = num_instructions)
-vars_ = Var()
 
-for _ in range(1):
-
+for _ in range(5):
+    vars_ = Var()
+    history = History(length_ = num_instructions)
     experiment = Experiment(vars_ =vars_,num_banks=num_banks,num_addr=num_addr)
     program, adjoint_program = addr_management.generate_instruction_sequence(bank,row)
 
     experiment.load_instr(core0_inst=program,
             core1_inst=[])
-    #print(experiment.core0.inst)
-    #exit()
-    output = experiment.simulate(40000)
-    dt = output['ddr_simpl_vec_core0']
-    
-    history.store({'program':{'core0':program},
-                    'adjoint':{'core0':adjoint_program},
-                'event':dt,
-                },(bank,row))
 
 
-#print_dict(adjoint_program)
+    experiment.simulate(1000)
+     
+    history.store({'program':{'core0':program}},
+                    {'cache_info_miss':experiment.vars.misses,
+                     'cache_info_hits':experiment.vars.hits
+                    }
+                  )
 
-print_dict(program)
 
-print_dict(experiment.vars.events)
-print_dict(experiment.vars.misses)
-print_dict(experiment.vars.hits)
+
+#print_dict(experiment.vars.events)
+print(list(experiment.vars.misses['L2'].values()))
+#print_dict(experiment.vars.hits)
 print('count',experiment.vars.count)
+
+

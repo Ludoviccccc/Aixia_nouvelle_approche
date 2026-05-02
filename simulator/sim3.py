@@ -19,7 +19,9 @@ import numpy as np
 # Global clock
 # ==========================================================
 class Var:
-    def __init__(self):
+    def __init__(self,step:int=10,
+            max_instruction:int=100,
+                      ):
         self.global_cycle = 0
         # New: Track shared resource contention
         self.shared_resource_events = []
@@ -34,9 +36,9 @@ class Var:
             'status': [],
             'id':[],
         }
-
-        self.hits = {"L1":{},"L2":{}}
-        self.misses = {"L1":{},"L2":{}}
+        make_empty_dict =  lambda: {window:0 for window in range(max_instruction//step)}
+        self.hits = {"type":"hit","L1":make_empty_dict(),"L2":make_empty_dict()}
+        self.misses = {"type":"miss","L1":make_empty_dict(),"L2":make_empty_dict()}
         self.events = {"L1":{},"L2":{}}
         self.step = 10
         self.count = 0
@@ -58,32 +60,15 @@ class Var:
                 "operation":operation,
                 "instr_id":id_,
                 }
-        if level=='L1':
-            print('id',id_)
         #add to self.events dictionary
         if addr not in self.events[level]:
             self.events[level][addr] = [access]
         else:
             self.events[level][addr].append(access)
         if type_=="miss":
-            #add to self.misses dictionary
-            if addr not in self.misses[level]:
-                self.misses[level][addr] = {id_//self.step:1}
-            else:
-                if id_//self.step in self.misses[level][addr]:
-                    self.misses[level][addr][id_//self.step] += 1
-                else:
-                    self.misses[level][addr][id_//self.step] = 1
+            self.misses[level][id_//self.step] += 1
         if type_=="hit":
-            #add to self.misses dictionary
-            if addr not in self.hits[level]:
-                self.hits[level][addr] = {id_//self.step:1}
-            else:
-                if id_//self.step in self.hits[level][addr]:
-                    self.hits[level][addr][id_//self.step] += 1
-                else:
-                    self.hits[level][addr][id_//self.step] = 1
-        print('level', level)
+            self.hits[level][id_//self.step] += 1
         if level=='L1':
             self.count +=1
     def log_eviction(self,
@@ -831,7 +816,6 @@ class CacheLevel:
             # If we are in write-back mode and the cache line is dirty,
             # it has to be written to the lower level of the memory hierarchy
             # before being overwritten.
-            print('self.line_size:',self.line_size)
             #print('tag',victim_line.tag)
             #print('self.line.valid,',victim_line.valid)
             if victim_line.valid and self.write_back:
@@ -933,11 +917,20 @@ class Core:
         self.pending_accesses = []  # List of (op, addr) tuples for pending accesses
         self.stall_op = None        # (op, addr) of the stalled operation, if any
         self.inst = {}            # Instructions scheduled by cycle {cycle: (op, addr)}
+        self.inst_queue = []      # Sorted list of (cycle, op, addr, id_) for sequential execution
+        self.inst_ptr = 0         # Index of next instruction to execute
 
     # Load a sequence of instructions
     # Instructions are a dict {cycle: (op, addr)}
     def load_instr(self, inst):
-        self.inst=inst
+        self.inst = inst
+        if isinstance(inst, dict):
+            self.inst_queue = sorted(
+                [(cycle, op, addr, id_) for cycle, (op, addr, id_) in inst.items()]
+            )
+        else:
+            self.inst_queue = []
+        self.inst_ptr = 0
 
     def read(self, addr, callback,id_):
         self.cache.read(addr, callback,id_=id_)
@@ -992,37 +985,34 @@ class Core:
                     self.stall_op = None
             else:
                 #print(f"{self.vars.global_cycle}: [Core {self.core_id}] Still stalled on {op.upper()}@{addr} due to dependency")
-                return 
-            return self.vars.global_cycle
+                return
 
-        # Check if there is an instruction to execute
-        if self.vars.global_cycle in self.inst:
-            op,addr,id_ = self.inst[self.vars.global_cycle]
-            if op=='write':
-                if self.dependency('write', addr):
-                    # There is a pending access with dependency, we stall
-                    #print(f"{self.vars.global_cycle}: [Core {self.core_id}] WRITE@{addr} stalled due to dependency")
-                    self.stall_op = ('write', addr,id_)
-                    return 
+        # Check if there is an instruction to execute (next in queue that is due)
+        if self.inst_ptr < len(self.inst_queue):
+            cycle, op, addr, id_ = self.inst_queue[self.inst_ptr]
+            if self.vars.global_cycle >= cycle:
+                self.inst_ptr += 1
+                if op=='write':
+                    if self.dependency('write', addr):
+                        # There is a pending access with dependency, we stall
+                        #print(f"{self.vars.global_cycle}: [Core {self.core_id}] WRITE@{addr} stalled due to dependency")
+                        self.stall_op = ('write', addr,id_)
+                        return
+                    else:
+                        #print(f"{self.vars.global_cycle}: [Core {self.core_id}] WRITE op at @{addr}")
+                        self.write(addr,id_=id_)
+                        return self.vars.global_cycle
                 else:
-                    #print(f"{self.vars.global_cycle}: [Core {self.core_id}] WRITE op at @{addr}")
-                    self.write(addr,id_=id_)             
-                    return self.vars.global_cycle
-            else:
-                if self.dependency('read', addr):
-                    # There is a pending access with dependency, we stall
-                    #print(f"{self.vars.global_cycle}: [Core {self.core_id}] READ@{addr} stalled due to dependency")
-                    self.stall_op = ('read', addr,id_)
-                    return
-                else:
-                    #print(f"{self.vars.global_cycle}: [Core {self.core_id}] READ op at @{addr}")
-                    self.enqueue_access('read', addr)
-                    self.read(addr, lambda addr=addr: self.dequeue_access('read', addr),id_=id_)
-                    return self.vars.global_cycle
-        else:
-             # IDLE cycle, do nothing.
-            #print(f"{self.vars.global_cycle}: [Core {self.core_id}] IDLE cycle")
-            pass
+                    if self.dependency('read', addr):
+                        # There is a pending access with dependency, we stall
+                        #print(f"{self.vars.global_cycle}: [Core {self.core_id}] READ@{addr} stalled due to dependency")
+                        self.stall_op = ('read', addr,id_)
+                        return
+                    else:
+                        #print(f"{self.vars.global_cycle}: [Core {self.core_id}] READ op at @{addr}")
+                        self.enqueue_access('read', addr)
+                        self.read(addr, lambda addr=addr: self.dequeue_access('read', addr),id_=id_)
+                        return self.vars.global_cycle
 
 # Example usage after simulation:
 def print_contention_analysis():

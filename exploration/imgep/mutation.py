@@ -3,11 +3,11 @@ import copy
 import sys
 sys.path.append('../../')
 from exploration.codegeneration import Address_Management
-def mutate_instruction_sequence(instructions, 
+def mutate_instruction_sequence(instructions:dict, 
                                     addr_management:Address_Management,
+                                    num_instructions:int,
                                     num_mutations=1,
                                     max_cycle=60,
-                                    num_instructions=None,
                                     ):
     """
     Mutate an instruction sequence by adding, deleting, or modifying instructions.
