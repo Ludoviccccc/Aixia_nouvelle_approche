@@ -478,7 +478,7 @@ class DDRState(Enum):
 # DDR Memory Model
 #---------------------------------------------------------
 class DDRMemory:
-    def __init__(self, num_banks=4,vars_=None):
+    def __init__(self, num_banks=8,vars_=None):
         self.vars = vars_
         self.num_banks = num_banks
         self.memory = {} # Actual data storage (addr -> value)
@@ -499,7 +499,7 @@ class DDRMemory:
         return addr % self.num_banks
 
     def _get_row(self, addr):
-        return addr // 16 # Example: each row covers 16 addresses (line_size is 4, so 4 cache lines per row for a 4-line_size cache)
+        return addr // 8 # Example: each row covers 8 addresses (line_size is 4, so 4 cache lines per row for a 4-line_size cache)
 
     # Request from controller to DDR (e.g., ACT, RD, WR, PRE)
     def request(self, req):

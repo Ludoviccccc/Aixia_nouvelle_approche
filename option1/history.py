@@ -11,20 +11,26 @@ class History:
         self.capacity = capacity
         self.event ={} 
         self.j = 0
-        self.tab = []
         self.names = []
         self.length_ = length_
+        self.tabular = []
+    def __getitem__(self,id_):
+        return self.memory_program['core0'][id_]
     def as_tab(self):
-        return np.array(self.tab)
+        return np.array(self.tabular)
     def __len__(self):
         return len(self.memory_program["core0"])
     def store(self,sample:dict,obs:dict):
         self.memory_program["core0"].append(sample)
+        tab = []
         for key in obs:
+            a = list(obs[key].values())
+            tab += a
             if key in self.event:
-                self.event[key].append(list(obs.values()))
+                self.event[key].append(a)
             else:
-                self.event[key] = [list(obs.values())]
+                self.event[key] = [a]
+        self.tabular.append(tab)
         self.j+=1
     def content(self):
         return {

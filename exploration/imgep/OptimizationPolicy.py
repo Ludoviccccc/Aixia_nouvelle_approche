@@ -10,6 +10,7 @@ from exploration.codegeneration import Address_Management
 class OptimizationPolicykNN(test_programs):
     def __init__(self,
                 address_management:Address_Management,
+                mutation_method,
                 k=1,
                 num_mutations = 1,
                 max_cycle = 60,
@@ -21,6 +22,7 @@ class OptimizationPolicykNN(test_programs):
                 ):
         super().__init__()
         self.segment_method = segment_method
+        self.mutation_method = mutation_method
         self.min_address = min_address
         self.max_address = max_address
         self.num_parts = num_parts
@@ -88,5 +90,5 @@ class OptimizationPolicykNN(test_programs):
     def light_code_mutation(self,program):
         '''slight random mutations using the bank and row informations
         '''
-        mutated = mutate_instruction_sequence(program,self.address_management,num_mutations=self.num_mutations,max_cycle=self.max_cycle,num_instructions=self.num_instructions)
+        mutated = self.mutation_method(program,self.address_management,num_mutations=self.num_mutations,max_cycle=self.max_cycle,num_instructions=self.num_instructions)
         return mutated
