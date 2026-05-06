@@ -45,22 +45,22 @@ def distance_function(goal,features):
 
 
 if __name__=='__main__':
-
+    #Simulation parameters
     num_addr = 40
     num_banks = 4
     min_address = 0
     max_address = 19
     num_instructions = 10
-    capacity = 10000
+    max_cycle = 60 #Maximum cycle in simulation
     
     #IMGEP parameters
-    k = 2
-    N = 1000
-    N_init = 100
-    print_freq = 100
+    capacity = 10000 #History capacity
+    k = 2 #Number of neighbors in goal achievement strategy
+    N = 1000 #Number of imgep iterations
+    N_init = 100 #Number of warming iterations
+    print_freq = 100 #print iteration step every print_freq
     
-    num_mutations = 1
-    max_cycle = 60
+    num_mutations = 1 #Nb of mutations in goal achievement strategy
 
 
 
@@ -73,7 +73,7 @@ if __name__=='__main__':
                                         num_banks=num_banks,
                                         num_addr=num_addr,
                                         num_instructions=num_instructions)
-    #history
+    #history, this class is used by the goal generator, explorer_random and explorer_imgep
     history = History(capacity=capacity)
     #goal generation
     goalgenerator = GoalGenerator(history)
@@ -86,15 +86,17 @@ if __name__=='__main__':
     mixing_method = Mix_sequences_interleaved(max_cycle)
 
     distance_method = DistanceMethod(distance_function)
+    #Goal achievement strategy
     policy = OptimizationPolicykNN(mutation_method,
                                 k=k,
                                 distance_method=distance_method,
                                 mixing_method = mixing_method)
 
 
-
+    #Explorer for random exploration
     explorer_random = randomexploration(N_init,environment,lambda: addr_management.generate_instruction_sequence()[0],history,print_freq=print_freq)
-
+    #IMGEP explorer
     explorer_imgep = IMGEP(N,N_init,environment,history,goalgenerator,policy,explorer_random,print_freq=print_freq)
+
+    #Run exploration
     explorer_imgep()
-    
