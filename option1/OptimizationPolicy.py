@@ -10,42 +10,33 @@ from option1.distance import DistanceMethod
 from option1.mutation import MutationInstructions
 class OptimizationPolicykNN(test_programs):
     def __init__(self,
-            mutation_method:MutationInstructions,
+                mutation_method:MutationInstructions,
+                mixing_method,
                 distance_method:DistanceMethod,
                 k=1,
-                segment_method=True,
-                num_instructions=10,
                 ):
         super().__init__()
-        self.segment_method = segment_method
         self.mutation_method = mutation_method
+        self.mixing_method = mixing_method
         self.distance_method = distance_method
         self.k = k
-        self.num_instructions = num_instructions
 
     def __call__(self,goal:np.ndarray,H:History)->dict:
         '''
-        Outputs candidate program  for reaching `goal`
+        Outputs candidate parameter for reaching `goal`
         '''
         closest_parameters = self.select_closest_parameters(goal,H) 
         output = closest_parameters 
         if self.k>1:
-            output = self.mix(output)
+            output = self.mixing_method(output)
         else:
             output = output[0]
-        output = self.light_parameter_mutation(output)
+        output = self.mutation_method(output)
         return output
-
-
-
-
-    def mix(self,paramters:list[dict]):
-        mix0 = mix_sequences(paramters)
-        return {'core0':[mix0],'core1':[mix1]}
 
     def feature2closest_parameter(self,goal:np.ndarray,features:dict)->np.ndarray:
         '''
-        selects the `self.k` closest program outcome indices from the database to the desired goal
+        selects the `self.k` closest parameter outcome indices from the database to the desired goal
         using the loss function `self.loss`
         '''
         d = self.distance_method(goal,features)
@@ -54,7 +45,7 @@ class OptimizationPolicykNN(test_programs):
 
 
     def select_closest_parameters(self,goal: dict,history:History)->dict:
-        assert len(history.memory_program)>0, "history empty"
+        assert len(history)>0, "history empty"
         features = history.as_tab()
         idx = self.feature2closest_parameter(goal,features)
 
@@ -62,10 +53,3 @@ class OptimizationPolicykNN(test_programs):
         for id_ in idx:
             output.append(history[id_])
         return output
-
-
-    def light_parameter_mutation(self,program):
-        '''slight random mutations using the bank and row informations
-        '''
-        mutated = self.mutation_method(program)
-        return mutated
