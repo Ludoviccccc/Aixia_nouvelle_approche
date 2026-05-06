@@ -33,6 +33,8 @@ class IMGEP:
                 print_freq:int=1000,
                 ):
 
+        assert history==randomexploration.history, "provided history class is not equalled to randomexploration's history class"
+        assert history==goal_generator.history, "provided history class is not equalled to goal_generator's history class"
         self.env = environment
 
         self.history = history
@@ -56,11 +58,12 @@ class IMGEP:
         start_time = time.time()
         """Performs the exploration.
         """
-        if self.start==0:
-            self.random_explor()
+        self.random_explor()
+        assert len(self.history), "no element in history"
+
         for i in range(self.N_init,self.N):
-            if i%self.print_freq==0 or i==self.N-1:
-                print(f'step {i}/{self.N-1}')
+            if (i+1)%self.print_freq==0 or i==self.N-1:
+                print(f'step {i+1}/{self.N}')
             if (i-self.N_init)%self.periode==0 and i>=self.N_init:
                 goal = self.goal_generator()
             parameter = self.optimization_policy(goal,self.history)
