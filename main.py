@@ -22,14 +22,15 @@ def print_dict(dict_):
 
 
 class randomexploration:
-    def __init__(self,N,environment, generator,history:History):
+    def __init__(self,N,environment, generator,history:History,print_freq:int=1000):
         self.generator = generator
         self.environment = environment
         self.N = N
         self.history = history
+        self.print_freq = print_freq
     def __call__(self):
         for j in range(self.N):
-            if (j+1)%1000==0:
+            if (j+1)%self.print_freq==0:
                 print(f'step {j+1}/{self.N}')
             parameter = self.generator()
             obs = self.environment(parameter)
@@ -54,8 +55,9 @@ if __name__=='__main__':
     
     #IMGEP parameters
     k = 2
-    N = 10000
-    N_init = 1000
+    N = 1000
+    N_init = 100
+    print_freq = 100
     
     num_mutations = 1
     max_cycle = 60
@@ -91,9 +93,8 @@ if __name__=='__main__':
 
 
 
-    explorer_random = randomexploration(N_init,environment,lambda: addr_management.generate_instruction_sequence()[0],history)
-    explorer_random()
+    explorer_random = randomexploration(N_init,environment,lambda: addr_management.generate_instruction_sequence()[0],history,print_freq=print_freq)
 
-    explorer_imgep = IMGEP(N,N_init,environment,history,goalgenerator,policy,explorer_random)
+    explorer_imgep = IMGEP(N,N_init,environment,history,goalgenerator,policy,explorer_random,print_freq=print_freq)
     explorer_imgep()
     
