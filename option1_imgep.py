@@ -36,9 +36,6 @@ class randomexploration:
 
 
 def distance_function(goal,features):
-    #x = []
-    #for key in goal:
-    #    x+= list(goal[key].values()) 
     x = goal
     v = x-features
     out = np.sum(v**2)
@@ -52,7 +49,7 @@ if __name__=='__main__':
     min_address = 0
     max_address = 19
     num_instructions = 10
-    
+    capacity = 1000 
     
     #IMGEP parameters
     k = 1
@@ -74,7 +71,7 @@ if __name__=='__main__':
                                         num_addr=num_addr,
                                         num_instructions=num_instructions)
     #history
-    history = History(length_ = num_instructions,capacity=10000)
+    history = History(length_ = num_instructions,capacity=capacity)
     #goal generation
     goalgenerator = GoalGenerator(history)
 
