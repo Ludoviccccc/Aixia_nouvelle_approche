@@ -61,7 +61,7 @@ class MutationInstructions:
             elif mutation_type == 'modify' and mutated:
                 # Modify an existing instruction
                 cycle_to_modify = random.choice(list(mutated.keys()))
-                old_type, old_address,id_old = mutated[cycle_to_modify]
+                old_type, old_address = mutated[cycle_to_modify]
                 
                 # Choose what to modify: type, address, or both
                 modify_choice = random.choice(['type', 'address', 'both'])
