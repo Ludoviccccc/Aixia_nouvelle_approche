@@ -926,7 +926,7 @@ class Core:
         self.inst = inst
         if isinstance(inst, dict):
             self.inst_queue = sorted(
-                [(cycle, op, addr, id_) for cycle, (op, addr, id_) in inst.items()]
+                [(cycle, op, addr) for cycle, (op, addr) in inst.items()]
             )
         else:
             self.inst_queue = []
@@ -973,15 +973,15 @@ class Core:
         # If the core is waiting for a previous access to complete, it cannot issue a new request
         # We consider all dependencies between instruction in RAW, WAR and WAW on addresses.
         if self.stall_op:
-            op, addr,id_ = self.stall_op
+            op, addr = self.stall_op
             if not self.dependency(op, addr):
                 #print(f"{self.vars.global_cycle}: [Core {self.core_id}] Resuming stalled {op.upper()}@{addr}")
                 if op == 'write':
-                    self.write(addr,id_=id_)
+                    self.write(addr,id_=self.inst_ptr)
                     self.stall_op = None
                 elif op == 'read':
                     self.enqueue_access('read', addr)
-                    self.read(addr, lambda addr=addr: self.dequeue_access('read', addr),id_=id_)
+                    self.read(addr, lambda addr=addr: self.dequeue_access('read', addr),id_=self.inst_ptr)
                     self.stall_op = None
             else:
                 #print(f"{self.vars.global_cycle}: [Core {self.core_id}] Still stalled on {op.upper()}@{addr} due to dependency")
@@ -989,29 +989,29 @@ class Core:
 
         # Check if there is an instruction to execute (next in queue that is due)
         if self.inst_ptr < len(self.inst_queue):
-            cycle, op, addr, id_ = self.inst_queue[self.inst_ptr]
+            cycle, op, addr = self.inst_queue[self.inst_ptr]
             if self.vars.global_cycle >= cycle:
                 self.inst_ptr += 1
                 if op=='write':
                     if self.dependency('write', addr):
                         # There is a pending access with dependency, we stall
                         #print(f"{self.vars.global_cycle}: [Core {self.core_id}] WRITE@{addr} stalled due to dependency")
-                        self.stall_op = ('write', addr,id_)
+                        self.stall_op = ('write', addr)
                         return
                     else:
                         #print(f"{self.vars.global_cycle}: [Core {self.core_id}] WRITE op at @{addr}")
-                        self.write(addr,id_=id_)
+                        self.write(addr,id_=self.inst_ptr)
                         return self.vars.global_cycle
                 else:
                     if self.dependency('read', addr):
                         # There is a pending access with dependency, we stall
                         #print(f"{self.vars.global_cycle}: [Core {self.core_id}] READ@{addr} stalled due to dependency")
-                        self.stall_op = ('read', addr,id_)
+                        self.stall_op = ('read', addr)
                         return
                     else:
                         #print(f"{self.vars.global_cycle}: [Core {self.core_id}] READ op at @{addr}")
                         self.enqueue_access('read', addr)
-                        self.read(addr, lambda addr=addr: self.dequeue_access('read', addr),id_=id_)
+                        self.read(addr, lambda addr=addr: self.dequeue_access('read', addr),id_=self.inst_ptr)
                         return self.vars.global_cycle
 
 # Example usage after simulation:
