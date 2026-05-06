@@ -2,7 +2,7 @@ import random
 import copy
 import sys
 sys.path.append('../')
-from exploration.match_virtual_physical_addresses import Address2Loc
+#from exploration.match_virtual_physical_addresses import Address2Loc
 
 
 class Address_Management:
@@ -21,7 +21,6 @@ class Address_Management:
         self.max_cycle = max_cycle
         self.num_instructions = num_instructions
         self.max_instructions = max_instructions
-        self.address2loc = Address2Loc(self.num_addr,num_banks,min_address,max_address)
     def generate_instruction_sequence(self):
         """
         Generate a random dictionary of assembly instructions.
@@ -49,11 +48,9 @@ class Address_Management:
         cycles = sorted(random.sample(range(0, self.max_cycle + 1), num_instructions))
         
         for i,cycle in enumerate(cycles):
-            bank,row = random.choice(self.address2loc.available_rows)
-            address = self.address2loc.location2rand_addr(bank,row)
+            address = random.randint(self.min_address,self.max_address)
             instr_type = random.choice(instruction_types)
             #instructions[cycle] = (instr_type, address)
             instructions[cycle] = (instr_type, address)
-            instructions_adjoint[cycle] = (instr_type, (bank,row,i))
         
-        return dict(sorted(instructions.items())),dict(sorted(instructions_adjoint.items()))
+        return dict(sorted(instructions.items()))

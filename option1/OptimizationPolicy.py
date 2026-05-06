@@ -2,13 +2,10 @@ import random
 import numpy as np
 import sys
 sys.path.append("../")
-from exploration.imgep.mutation import mutate_instruction_sequence
 from option1.history import History
-from exploration.imgep.mix import mix_sequences
-from exploration.test_addr import test_programs
 from option1.distance import DistanceMethod
 from option1.mutation import MutationInstructions
-class OptimizationPolicykNN(test_programs):
+class OptimizationPolicykNN:
     def __init__(self,
                 mutation_method:MutationInstructions,
                 mixing_method,

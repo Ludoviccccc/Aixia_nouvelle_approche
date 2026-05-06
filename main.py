@@ -94,7 +94,7 @@ if __name__=='__main__':
 
 
     #Explorer for random exploration
-    explorer_random = randomexploration(N_init,environment,lambda: addr_management.generate_instruction_sequence()[0],history,print_freq=print_freq)
+    explorer_random = randomexploration(N_init,environment,lambda: addr_management.generate_instruction_sequence(),history,print_freq=print_freq)
     #IMGEP explorer
     explorer_imgep = IMGEP(N,N_init,environment,history,goalgenerator,policy,explorer_random,print_freq=print_freq)
 
