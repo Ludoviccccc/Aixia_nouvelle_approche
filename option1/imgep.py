@@ -7,8 +7,6 @@ from option1.history import History
 from option1.OptimizationPolicy import OptimizationPolicykNN
 from option1.goal_generation import GoalGenerator
 
-
-
 from option1.env import Environment
 
 import time
@@ -58,7 +56,8 @@ class IMGEP:
         start_time = time.time()
         """Performs the exploration.
         """
-        self.random_explor()
+        if self.start==0:
+            self.random_explor()
         assert len(self.history), "no element in history"
 
         for i in range(self.N_init,self.N):
@@ -71,22 +70,6 @@ class IMGEP:
             self.history.store(parameter,observation)
         print(time.time() - start_time)
 
-
-
-
-
-    #def take(self,sample:dict,start:int): 
-    #    """Takes the ``start`` first steps from the ``sample`` dictionnary to initialize the exploration. 
-    #    Then the iterator i is set to ``start`` directly
-    #    """
-    #    for key1 in sample['memory_perf']:
-    #        for key2 in sample['memory_perf'][key1].keys():
-    #            shape = sample['memory_perf'][key1][key2].shape
-    #            in_ = np.zeros(shape)
-    #            in_[:start] = sample['memory_perf'][key1][key2][:start]  
-    #            self.H.memory_perf[key1][key2] = in_
-    #    self.H.memory_program["core0"] = sample["memory_program"]["core0"][:start]
-    #    self.H.tab = list(sample['tabular_view'][:start])
-    #    self.start = start
-    #    self.N_init = start
-    #    self.H.j = start
+    def take(self,content,count):
+        self.start = count
+        self.history.take(content,count)
