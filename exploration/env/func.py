@@ -95,7 +95,6 @@ class Experiment:
 
         self.cache_stats_core_0 = self.mem_core0.stats()
         self.cache_stats_core_1 = self.mem_core1.stats()
-        self.reorder()
         if display_stats:
             # Report results
             print("\n--- Simulation Stats ---")
@@ -110,22 +109,20 @@ class Experiment:
             print('shared cache L2',display_dict)
             print('ddr hits', self.hits_tab)
             print('ddr miss', self.miss_tab)
-        return self.output_data()
-    def reorder(self):
-        pass
-    def output_data(self):
-        ddr_access = pd.DataFrame([])
-        ddr_access['id'] = range(len(self.core0.inst))
-        ddr_access['row'] = [0]*len(self.core0.inst)
-        ddr_access['bank'] = [0]*len(self.core0.inst)
-        ddr_access['status'] = [0]*len(self.core0.inst)
-        in_ = pd.DataFrame(self.vars.access_ddr)
-        ddr_access.loc[self.vars.access_ddr['id'],ddr_access.keys()] = in_[['id','row','bank','status']].values
-        ddr_access.set_index('id',inplace=True)
-        #print(ddr_access)
-        return {
-                'time_core0':max(self.time_values['core0']),
-                'time_core1':max(self.time_values['core1']),
-                'ddr_simpl_vec_core0':ddr_access,
-                #'shared_resource_events':self.vars.shared_resource_events,
-                }
+        #return self.output_data()
+    #def output_data(self):
+    #    ddr_access = pd.DataFrame([])
+    #    ddr_access['id'] = range(len(self.core0.inst))
+    #    ddr_access['row'] = [0]*len(self.core0.inst)
+    #    ddr_access['bank'] = [0]*len(self.core0.inst)
+    #    ddr_access['status'] = [0]*len(self.core0.inst)
+    #    in_ = pd.DataFrame(self.vars.access_ddr)
+    #    ddr_access.loc[self.vars.access_ddr['id'],ddr_access.keys()] = in_[['id','row','bank','status']].values
+    #    ddr_access.set_index('id',inplace=True)
+    #    #print(ddr_access)
+    #    return {
+    #            'time_core0':max(self.time_values['core0']),
+    #            'time_core1':max(self.time_values['core1']),
+    #            'ddr_simpl_vec_core0':ddr_access,
+    #            #'shared_resource_events':self.vars.shared_resource_events,
+    #            }
