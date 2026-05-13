@@ -18,13 +18,13 @@ class MutationInstructions:
             max_cycle:int=60,
             min_address:int = 0,
             max_address:int=19,
-            num_instructions:int=None,
+            max_instructions:int=None,
     ):
         self.num_mutations = num_mutations
         self.max_cycle = max_cycle
         self.min_address = min_address
         self.max_address = max_address
-        self.num_instructions = num_instructions
+        self.max_instructions = max_instructions
 
 
     def __call__(self,instructions,
@@ -79,8 +79,8 @@ class MutationInstructions:
                     new_type = 'write' if old_type == 'read' else 'read'
                     new_address = random.randint(self.min_address, self.max_address)
                     mutated[cycle_to_modify] = (new_type, new_address)
-        if len(mutated)>self.num_instructions:
-            to_del = random.sample(list(mutated.keys()),len(mutated)- self.num_instructions)
+        if len(mutated)>self.max_instructions:
+            to_del = random.sample(list(mutated.keys()),len(mutated)- self.max_instructions)
             for k in to_del:
                 del mutated[k]
         return mutated
