@@ -10,12 +10,9 @@ class Address_Management:
             max_cycle=60,
             min_address = 0,
             max_address = 19,
-            num_addr = 40,
-            num_banks = 8,
             num_instructions=None,
             max_instructions=5,
             ):
-        self.num_addr = num_addr
         self.min_address = min_address
         self.max_address = max_address
         self.max_cycle = max_cycle
