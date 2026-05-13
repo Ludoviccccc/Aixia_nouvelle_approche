@@ -1,0 +1,9 @@
+{
+"capacity":10000,
+"k":1,
+"N":10000,
+"N_init":1000,
+"print_freq":100,
+"num_mutations":5,
+"periode":1
+}
