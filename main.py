@@ -15,6 +15,8 @@ from option1.env import Environment
 
 from exploration.env.func import Experiment
 
+import json
+import sys
 def print_dict(dict_):
     for key in dict_:
         print(key,dict_[key])
@@ -45,21 +47,28 @@ def distance_function(goal,features):
 
 
 if __name__=='__main__':
+
+    simu_params = {
+    "min_address" : 0,
+    "max_address" : 19,
+    "max_instructions" : 10,
+    }
+
+
+
     #Simulation parameters
-    num_addr = 40
-    num_banks = 4
-    min_address = 0
-    max_address = 19
-    num_instructions = 10
     max_cycle = 60 #Maximum cycle in simulation
-    
+   
+
+    with open(sys.argv[1],"rb") as f:
+         config = json.load(f)
+ 
     #IMGEP parameters
     capacity = 10000 #History capacity
     k = 2 #Number of neighbors in goal achievement strategy
     N = 1000 #Number of imgep iterations
     N_init = 100 #Number of warming iterations
     print_freq = 100 #print iteration step every print_freq
-    
     num_mutations = 1 #Nb of mutations in goal achievement strategy
 
 
@@ -67,22 +76,16 @@ if __name__=='__main__':
     #Envionment class 
     environment = Environment()
     
-    addr_management = Address_Management(max_instructions=num_instructions,
-                                        min_address=min_address,
-                                        max_address=max_address,
-                                        num_banks=num_banks,
-                                        num_addr=num_addr,
-                                        num_instructions=num_instructions)
+    addr_management = Address_Management(**simu_params)
+
     #history, this class is used by the goal generator, explorer_random and explorer_imgep
     history = History(capacity=capacity)
     #goal generation
     goalgenerator = GoalGenerator(history)
 
     #optimization policy models
-    mutation_method = MutationInstructions(num_instructions,
-                                        max_cycle,min_address,
-                                        max_address,
-                                        num_instructions)
+
+    mutation_method = MutationInstructions(num_mutations,**simu_params)
     mixing_method = Mix_sequences_interleaved(max_cycle)
 
     distance_method = DistanceMethod(distance_function)
