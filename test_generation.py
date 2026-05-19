@@ -59,20 +59,17 @@ if __name__=='__main__':
     #Simulation parameters
     max_cycle = 60 #Maximum cycle in simulation
    
-
-    with open(sys.argv[1],"rb") as f:
-         config = json.load(f)
  
     #IMGEP parameters
     capacity = 10000 #History capacity
     k = 2 #Number of neighbors in goal achievement strategy
-    N = 1000 #Number of imgep iterations
-    N_init = 100 #Number of warming iterations
+    N = 10000 #Number of imgep iterations
+    N_init = 1000 #Number of warming iterations
     print_freq = 100 #print iteration step every print_freq
     num_mutations = 1 #Nb of mutations in goal achievement strategy
-
-    #address X to work on
     address_x = 5
+
+
 
     #Envionment class 
     environment = Environment()
@@ -98,7 +95,9 @@ if __name__=='__main__':
 
 
     #Explorer for random exploration
-    explorer_random = randomexploration(N_init,environment,lambda: addr_management.generate_instruction_sequence(address_x = address_x),history,print_freq=print_freq)
+    explorer_random = randomexploration(N_init,environment,lambda: addr_management.generate_instruction_sequence(address_x=address_x),history,print_freq=print_freq)
+
+
     #IMGEP explorer
     explorer_imgep = IMGEP(N,N_init,environment,history,goalgenerator,policy,explorer_random,print_freq=print_freq)
 

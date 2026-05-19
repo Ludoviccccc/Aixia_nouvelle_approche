@@ -34,15 +34,21 @@ class MutationInstructions:
         instruction_types = ['read', 'write']
         
         # Get all possible cycles (0 to max_cycle)
-        all_cycles = set(range(0, self.max_cycle + 1))
         used_cycles = set(mutated.keys())
+        max_used_cycle = max(used_cycles)
+        min_used_cycle = min(used_cycles)
+        min_used_cycle_set = set([min_used_cycle])
+        max_used_cycle_set = set([max_used_cycle])
+        #all_cycles = set(range(0, self.max_cycle + 1))
+        all_cycles = set(range(min_used_cycle, max_used_cycle + 1))
         available_cycles = list(all_cycles - used_cycles)
+
         
         for _ in range(self.num_mutations):
-            if len(mutated)>1:
+            if len(mutated)>2:
                 mutation_type = random.choice(['add', 'delete', 'modify'])
             else:
-                mutation_type = random.choice(['add', 'modify'])
+                mutation_type = random.choice(['add'])
             
             if mutation_type == 'add' and available_cycles:
                 # Add a new instruction at an available cycle
@@ -54,13 +60,13 @@ class MutationInstructions:
                 
             elif mutation_type == 'delete' and mutated:
                 # Delete a random existing instruction
-                cycle_to_delete = random.choice(list(mutated.keys()))
+                cycle_to_delete = random.choice(list(set(mutated.keys())-min_used_cycle_set - max_used_cycle_set))
                 del mutated[cycle_to_delete]
                 available_cycles.append(cycle_to_delete)
                 
             elif mutation_type == 'modify' and mutated:
                 # Modify an existing instruction
-                cycle_to_modify = random.choice(list(mutated.keys()))
+                cycle_to_modify = random.choice(list(set(mutated.keys())-min_used_cycle_set - max_used_cycle_set))
                 old_type, old_address = mutated[cycle_to_modify]
                 
                 # Choose what to modify: type, address, or both

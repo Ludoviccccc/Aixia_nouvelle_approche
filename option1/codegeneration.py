@@ -18,7 +18,7 @@ class Address_Management:
         self.max_cycle = max_cycle
         self.num_instructions = num_instructions
         self.max_instructions = max_instructions
-    def generate_instruction_sequence(self):
+    def generate_instruction_sequence(self,address_x=None):
         """
         Generate a random dictionary of assembly instructions.
         
@@ -45,9 +45,12 @@ class Address_Management:
         cycles = sorted(random.sample(range(0, self.max_cycle + 1), num_instructions))
         
         for i,cycle in enumerate(cycles):
-            address = random.randint(self.min_address,self.max_address)
+            if address_x:
+                if i==0 or i==num_instructions-1:
+                    address = address_x
+                else:
+                    address = random.randint(self.min_address,self.max_address)
             instr_type = random.choice(instruction_types)
             #instructions[cycle] = (instr_type, address)
             instructions[cycle] = (instr_type, address)
-        
         return dict(sorted(instructions.items()))
