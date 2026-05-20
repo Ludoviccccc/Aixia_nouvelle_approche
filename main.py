@@ -21,7 +21,7 @@ from diversity.diversty import Diversity
 def distance_function(goal,features):
     x = goal
     v = x-features
-    out = np.sum(v**2)
+    out = np.sum(v**2,axis=1)
     return out
 
 
@@ -42,10 +42,10 @@ if __name__=='__main__':
     #IMGEP parameters
     capacity = 10000 #History capacity
     k = 1 #Number of neighbors in goal achievement strategy
-    N = 10000 #Number of imgep iterations
+    N = 5000 #Number of imgep iterations
     N_init = 1000 #Number of warming iterations
-    print_freq = 100 #print iteration step every print_freq
-    num_mutations = 1 #Nb of mutations in goal achievement strategy
+    print_freq = 1000 #print iteration step every print_freq
+    num_mutations = 3 #Nb of mutations in goal achievement strategy
 
     #address X to work on
     address_x = 5
