@@ -68,7 +68,7 @@ if __name__=='__main__':
     print_freq = 100 #print iteration step every print_freq
     num_mutations = 1 #Nb of mutations in goal achievement strategy
     address_x = 5
-
+    test_mode =  True
 
 
     #Envionment class 
@@ -84,7 +84,7 @@ if __name__=='__main__':
     #optimization policy models
 
     mutation_method = MutationInstructions(num_mutations,**simu_params)
-    mixing_method = Mix_sequences_interleaved(max_cycle)
+    mixing_method = Mix_sequences_interleaved(max_cycle,chunk_size=1)
 
     distance_method = DistanceMethod(distance_function)
     #Goal achievement strategy
@@ -93,13 +93,24 @@ if __name__=='__main__':
                                 distance_method=distance_method,
                                 mixing_method = mixing_method)
 
+    
 
-    #Explorer for random exploration
-    explorer_random = randomexploration(N_init,environment,lambda: addr_management.generate_instruction_sequence(address_x=address_x),history,print_freq=print_freq)
+    if test_mode:
+        g = lambda: addr_management.generate_instruction_sequence(address_x=address_x) 
+        p1 = g()
+        p2 = g()
+        programs = [p1,p2]
+        mixture = mixing_method(programs)
+        print('p1',p1)
+        print('p2',p2)
+        print("mixture",mixture)
+    else:
+        #Explorer for random exploration
+        explorer_random = randomexploration(N_init,environment,lambda: addr_management.generate_instruction_sequence(address_x=address_x),history,print_freq=print_freq)
 
 
-    #IMGEP explorer
-    explorer_imgep = IMGEP(N,N_init,environment,history,goalgenerator,policy,explorer_random,print_freq=print_freq)
+        #IMGEP explorer
+        explorer_imgep = IMGEP(N,N_init,environment,history,goalgenerator,policy,explorer_random,print_freq=print_freq)
 
-    #Run exploration
-    explorer_imgep()
+        #Run exploration
+        explorer_imgep()

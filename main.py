@@ -15,12 +15,9 @@ from option1.env import Environment
 from exploration.env.func import Experiment
 import json
 import sys
-def print_dict(dict_):
-    for key in dict_:
-        print(key,dict_[key])
 
 
-
+from diversity.diversty import Diversity
 def distance_function(goal,features):
     x = goal
     v = x-features
@@ -85,3 +82,6 @@ if __name__=='__main__':
             mixing_method=mixing_method,
             print_freq=print_freq)
 
+    diversity_ = Diversity(np.zeros((40)),np.ones((40,))*10,1)
+    
+    print(diversity_(history.as_tab()))
