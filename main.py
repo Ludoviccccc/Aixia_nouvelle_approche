@@ -10,7 +10,7 @@ from option1.distance import DistanceMethod
 from option1.mutation import MutationInstructions
 from option1.mix_interleaving import Mix_sequences_interleaved
 from option1.goal_generation import GoalGenerator
-from option1.imgep import run_imgep
+from option1.imgep import run_imgep,Randomexploration
 from option1.env import Environment
 from exploration.env.func import Experiment
 import json
@@ -42,8 +42,8 @@ if __name__=='__main__':
     #IMGEP parameters
     capacity = 10000 #History capacity
     k = 1 #Number of neighbors in goal achievement strategy
-    N = 1000 #Number of imgep iterations
-    N_init = 100 #Number of warming iterations
+    N = 10000 #Number of imgep iterations
+    N_init = 1000 #Number of warming iterations
     print_freq = 100 #print iteration step every print_freq
     num_mutations = 1 #Nb of mutations in goal achievement strategy
 
@@ -82,6 +82,13 @@ if __name__=='__main__':
             mixing_method=mixing_method,
             print_freq=print_freq)
 
-    diversity_ = Diversity(np.zeros((40)),np.ones((40,))*10,1)
+    diversity_ = Diversity(min_tab = np.zeros((40)),
+                            max_tab = np.ones((40,))*10,
+                            num_bins = 10)
     
     print(diversity_(history.as_tab()))
+
+    history_rand = History(capacity=capacity)
+    random_explorer = Randomexploration(N,environment,code_generation_method,history_rand,print_freq)
+    random_explorer()
+    print(diversity_(history_rand.as_tab()))
