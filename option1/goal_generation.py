@@ -9,5 +9,5 @@ class GoalGenerator:
         features = self.history.as_tab()
         min_ = features.min(axis=0)
         max_ = features.max(axis=0)+1
-        goal = np.random.randint(min_,max_)
+        goal = np.random.randint(.5*min_,10*max_)
         return goal

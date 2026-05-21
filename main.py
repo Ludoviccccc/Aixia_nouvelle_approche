@@ -41,8 +41,8 @@ if __name__=='__main__':
  
     #IMGEP parameters
     capacity = 10000 #History capacity
-    k = 1 #Number of neighbors in goal achievement strategy
-    N = 5000 #Number of imgep iterations
+    k = 2 #Number of neighbors in goal achievement strategy
+    N = 10000 #Number of imgep iterations
     N_init = 1000 #Number of warming iterations
     print_freq = 1000 #print iteration step every print_freq
     num_mutations = 3 #Nb of mutations in goal achievement strategy
@@ -86,9 +86,9 @@ if __name__=='__main__':
                             max_tab = np.ones((40,))*10,
                             num_bins = 10)
     
-    print(diversity_(history.as_tab()))
+    print(f'diversity imgep {diversity_(history.as_tab())}/10**40')
 
     history_rand = History(capacity=capacity)
     random_explorer = Randomexploration(N,environment,code_generation_method,history_rand,print_freq)
     random_explorer()
-    print(diversity_(history_rand.as_tab()))
+    print(f'diversity random {diversity_(history_rand.as_tab())}/10**40')
