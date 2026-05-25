@@ -109,6 +109,9 @@ class Experiment:
             print('shared cache L2',display_dict)
             print('ddr hits', self.hits_tab)
             print('ddr miss', self.miss_tab)
+        return {
+                'time_core0':max(self.time_values['core0']),
+                'time_core1':max(self.time_values['core1'])}
         #return self.output_data()
     #def output_data(self):
     #    ddr_access = pd.DataFrame([])
