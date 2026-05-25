@@ -7,13 +7,19 @@ from exploration.env.func import Experiment
 
 class Environment:
     def __init__(self,
-            num_addr = 40,
+            min_address = 0,
+            max_address = 19,
             num_banks = 8,
+            max_instructions:int=100,
+            step:int=10,
             ):
         self.num_banks = num_banks
-        self.num_addr = num_addr
+        self.num_addr = max_address - min_address
+        self.step = step
+        self.max_instructions = max_instructions
     def __call__(self,program):
-        self.var = Var()
+        self.var = Var(step = self.step,
+                       max_instructions = self.max_instructions)
         experiment = Experiment(self.var,
                                 num_banks=self.num_banks,
                                 num_addr = self.num_addr)

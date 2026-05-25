@@ -19,8 +19,9 @@ import numpy as np
 # Global clock
 # ==========================================================
 class Var:
-    def __init__(self,step:int=10,
-            max_instruction:int=100,
+    def __init__(self,
+            step:int=10,
+            max_instructions:int=100,
                       ):
         self.global_cycle = 0
         # New: Track shared resource contention
@@ -36,7 +37,7 @@ class Var:
             'status': [],
             'id':[],
         }
-        make_empty_dict =  lambda: {window:0 for window in range(max_instruction//step)}
+        make_empty_dict =  lambda: {window:0 for window in range(max_instructions//step)}
         self.hits = {"type":"hit","L1":make_empty_dict(),"L2":make_empty_dict()}
         self.misses = {"type":"miss","L1":make_empty_dict(),"L2":make_empty_dict()}
         self.events = {"L1":{},"L2":{}}
