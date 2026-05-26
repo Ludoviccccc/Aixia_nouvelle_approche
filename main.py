@@ -42,15 +42,15 @@ if __name__=='__main__':
  
     #IMGEP parameters
     k = 1 #Number of neighbors in goal achievement strategy
-    N = 10000 #Number of imgep iterations
+    N = 1000 #Number of imgep iterations
     capacity = N #History capacity
-    N_init = 1000 #Number of warming iterations
-    print_freq = 100 #print iteration step every print_freq
+    N_init = 100 #Number of warming iterations
+    print_freq = 100
     num_mutations = 3 #Nb of mutations in goal achievement strategy
 
     #address X to work on
     address_x = 5
-    step = 2
+    step = 1
     folder = 'results'
 
     #Envionment class 
@@ -59,7 +59,7 @@ if __name__=='__main__':
     addr_management = Address_Management(**simu_params)
     code_generation_method = lambda: addr_management.generate_instruction_sequence(address_x = address_x)
     #history, this class is used by the goal generator, explorer_random and explorer_imgep
-    history = History(capacity=capacity)
+    history = History(capacity=capacity,unused=['time_core0'])
 
     #goal generation
     goalgenerator = GoalGenerator(history)
@@ -83,9 +83,9 @@ if __name__=='__main__':
             distance_method=distance_method,
             mutation_method=mutation_method,
             mixing_method=mixing_method,
-            print_freq=print_freq)
+            )
     history.save_pickle(f'{folder}/imgep_N_{N}_k_{k}')
-    dim_out = 20
+    dim_out = 40
     diversity_ = Diversity(min_tab = np.zeros((dim_out,)),
                             max_tab = np.ones((dim_out,))*10,
                             num_bins = 10)
@@ -94,8 +94,8 @@ if __name__=='__main__':
     diversity_imgep_list = [diversity_(history.as_tab()[:print_freq*step]) for step in range(N//print_freq)]
     plt.plot(range(0,N,print_freq),diversity_imgep_list,label="imgep")
 
-    history_rand = History(capacity=capacity)
-    random_explorer = Randomexploration(N,environment,code_generation_method,history_rand,print_freq)
+    history_rand = History(capacity=capacity,unused=['time_core0'])
+    random_explorer = Randomexploration(N,environment,code_generation_method,history_rand)
     random_explorer()
     history_rand.save_pickle(f'{folder}/random_expl_N_{N}')
 

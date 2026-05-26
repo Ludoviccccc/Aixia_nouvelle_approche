@@ -26,7 +26,7 @@ class Var:
         self.global_cycle = 0
         # New: Track shared resource contention
         self.shared_resource_events = []
-
+        self.max_instructions = max_instructions
         self.access_ddr = {
             'cycle': [],
             'core_id': [],
@@ -41,7 +41,7 @@ class Var:
         self.hits = {"type":"hit","L1":make_empty_dict(),"L2":make_empty_dict()}
         self.misses = {"type":"miss","L1":make_empty_dict(),"L2":make_empty_dict()}
         self.events = {"L1":{},"L2":{}}
-        self.step = 10
+        self.step = step
         self.count = 0
     def log_event(self,
             type_:str,
@@ -61,6 +61,8 @@ class Var:
                 "operation":operation,
                 "instr_id":id_,
                 }
+        if id_>=self.max_instructions:
+            raise TypeError(f'id_ {id_} is too big')
         #add to self.events dictionary
         if addr not in self.events[level]:
             self.events[level][addr] = [access]
@@ -927,8 +929,10 @@ class Core:
         self.inst = inst
         if isinstance(inst, dict):
             self.inst_queue = sorted(
-                [(cycle, op, addr) for cycle, (op, addr) in inst.items()]
+                [(cycle, op, addr,id_) for id_,(cycle, (op, addr)) in enumerate(inst.items())]
             )
+            if len(self.inst_queue)>10:
+                raise TypeError(f'{self.inst_queue} is too long')
         else:
             self.inst_queue = []
         self.inst_ptr = 0
@@ -940,11 +944,11 @@ class Core:
         self.cache.write(addr,id_=id_)   
 
 
-    def enqueue_access(self, op, addr):
+    def enqueue_access(self, op, addr,id_):
         # Enqueue a memory access operation (read or write) in FIFO order 
         # This is used to track pending accesses for dependency checking.
         #print(f"{self.vars.global_cycle}: [Core {self.core_id}] enqueueing access {op.upper()}@{addr} :", end=" ")  
-        self.pending_accesses.append((op, addr))
+        self.pending_accesses.append((op, addr,id_))
         if len(self.pending_accesses) > 10:
             #print(f"{self.vars.global_cycle}: [Core {self.core_id}] :more than 10 pending accesses!")   
             pass
@@ -953,7 +957,7 @@ class Core:
     def dequeue_access(self, op, addr):
         # Remove the oldest entry in the queue matching the operation and address
         #print(f"{self.vars.global_cycle}: [Core {self.core_id}] dequeueing access {op.upper()}@{addr} :", end=" ")
-        for i, (o, a) in enumerate(self.pending_accesses):
+        for i, (o, a,id_) in enumerate(self.pending_accesses):
             if o == op and a == addr:
                 self.pending_accesses.pop(i)
                 #print(f"{self.pending_accesses}")                
@@ -963,7 +967,7 @@ class Core:
         # Check if there is a RaW, WaR or WaW dependency on the given address
         # Currenty, we consider all pending accesses in the queue.
         # In this model, we stall as soon as the same address identical, except in RaR
-        for (o, a) in self.pending_accesses:
+        for (o, a,id_) in self.pending_accesses:
             if (op != o) and (a == addr):
                 return True 
         return False
@@ -974,15 +978,15 @@ class Core:
         # If the core is waiting for a previous access to complete, it cannot issue a new request
         # We consider all dependencies between instruction in RAW, WAR and WAW on addresses.
         if self.stall_op:
-            op, addr = self.stall_op
+            op, addr,id_ = self.stall_op
             if not self.dependency(op, addr):
                 #print(f"{self.vars.global_cycle}: [Core {self.core_id}] Resuming stalled {op.upper()}@{addr}")
                 if op == 'write':
-                    self.write(addr,id_=self.inst_ptr)
+                    self.write(addr,id_=id_)
                     self.stall_op = None
                 elif op == 'read':
-                    self.enqueue_access('read', addr)
-                    self.read(addr, lambda addr=addr: self.dequeue_access('read', addr),id_=self.inst_ptr)
+                    self.enqueue_access('read', addr,id_=id_)
+                    self.read(addr, lambda addr=addr: self.dequeue_access('read', addr),id_=id_)
                     self.stall_op = None
             else:
                 #print(f"{self.vars.global_cycle}: [Core {self.core_id}] Still stalled on {op.upper()}@{addr} due to dependency")
@@ -990,29 +994,29 @@ class Core:
 
         # Check if there is an instruction to execute (next in queue that is due)
         if self.inst_ptr < len(self.inst_queue):
-            cycle, op, addr = self.inst_queue[self.inst_ptr]
+            cycle, op, addr,id_ = self.inst_queue[self.inst_ptr]
             if self.vars.global_cycle >= cycle:
                 self.inst_ptr += 1
                 if op=='write':
                     if self.dependency('write', addr):
                         # There is a pending access with dependency, we stall
                         #print(f"{self.vars.global_cycle}: [Core {self.core_id}] WRITE@{addr} stalled due to dependency")
-                        self.stall_op = ('write', addr)
+                        self.stall_op = ('write', addr,id_)
                         return
                     else:
                         #print(f"{self.vars.global_cycle}: [Core {self.core_id}] WRITE op at @{addr}")
-                        self.write(addr,id_=self.inst_ptr)
+                        self.write(addr,id_=id_)
                         return self.vars.global_cycle
                 else:
                     if self.dependency('read', addr):
                         # There is a pending access with dependency, we stall
                         #print(f"{self.vars.global_cycle}: [Core {self.core_id}] READ@{addr} stalled due to dependency")
-                        self.stall_op = ('read', addr)
+                        self.stall_op = ('read', addr,id_)
                         return
                     else:
                         #print(f"{self.vars.global_cycle}: [Core {self.core_id}] READ op at @{addr}")
-                        self.enqueue_access('read', addr)
-                        self.read(addr, lambda addr=addr: self.dequeue_access('read', addr),id_=self.inst_ptr)
+                        self.enqueue_access('read', addr,id_)
+                        self.read(addr, lambda addr=addr: self.dequeue_access('read', addr),id_=id_)
                         return self.vars.global_cycle
 
 # Example usage after simulation:

@@ -24,12 +24,14 @@ class Environment:
                                 num_banks=self.num_banks,
                                 num_addr = self.num_addr)
         experiment.load_instr(core0_inst = program,core1_inst = [])
-        experiment.simulate(400)
+        out = experiment.simulate(400)
         
 
         obs = {
             'cache_hit_l1':self.var.hits['L1'],
             'cache_hit_l2':self.var.hits['L2'],
             'cache_misses_l1':self.var.misses['L1'],
-            'cache_misses_l2':self.var.misses['L2']}
+            'cache_misses_l2':self.var.misses['L2'],
+            'time_core0':out['time_core0']
+            }
         return obs

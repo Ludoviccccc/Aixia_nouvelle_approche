@@ -6,6 +6,7 @@ import random
 class History:
     def __init__(self,
                     capacity:int=10000,
+                    unused:list=[], #list[str] name of elements that are unsued in imgep exploration
                     ):
         self.memory_parameter = []
         self.capacity = capacity
@@ -14,6 +15,7 @@ class History:
         self.names = []
         self.numpy_view = 0
         self.rand_id = random.uniform(0,1)
+        self.unused = unused
 
     def __eq__(self,other):
         return self.__dict__== other.__dict__
@@ -31,8 +33,12 @@ class History:
         self.memory_parameter.append(sample)
         tab = []
         for key in obs:
-            object_ = list(obs[key].values())
-            tab += object_
+            if not type(obs[key])==int:
+                object_ = list(obs[key].values())
+            else:
+                object_ = obs[key]
+            if key not in self.unused:
+                tab += object_
             if key in self.memory_observation:
                 self.memory_observation[key].append(object_)
             else:

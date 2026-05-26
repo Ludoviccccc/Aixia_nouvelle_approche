@@ -11,6 +11,7 @@ from option1.env import Environment
 
 import time
 import numpy as np
+from tqdm import tqdm
 class IMGEP:
     """
     N: int. The experimental budget
@@ -28,7 +29,6 @@ class IMGEP:
                 optimization_policy:OptimizationPolicykNN,
                 randomexploration,
                 periode:int = 1,
-                print_freq:int=1000,
                 ):
 
         assert history==randomexploration.history, "provided history class is not equalled to randomexploration's history class"
@@ -50,19 +50,16 @@ class IMGEP:
         #update frequency
         self.periode = periode
 
-        #print frequency
-        self.print_freq = print_freq
     def __call__(self):
         start_time = time.time()
         """Performs the exploration.
         """
         if self.start==0:
+            print('initilization')
             self.random_explor()
         assert len(self.history), "no element in history"
-
-        for i in range(self.N_init,self.N):
-            if (i+1)%self.print_freq==0 or i==self.N-1:
-                print(f'step {i+1}/{self.N}')
+        print('start of imgep')
+        for i in tqdm(range(self.N_init,self.N)):
             if (i-self.N_init)%self.periode==0 and i>=self.N_init:
                 goal = self.goal_generator()
             parameter = self.optimization_policy(goal,self.history)
@@ -77,16 +74,14 @@ class IMGEP:
 
 
 class Randomexploration:
-    def __init__(self,N,environment, generator,history:History,print_freq:int=1000):
+    def __init__(self,N,environment, generator,history:History):
         self.generator = generator
         self.environment = environment
         self.N = N
         self.history = history
-        self.print_freq = print_freq
     def __call__(self):
-        for j in range(self.N):
-            if (j+1)%self.print_freq==0:
-                print(f'step {j+1}/{self.N}')
+        print('run random exploration')
+        for j in tqdm(range(self.N)):
             parameter = self.generator()
             obs = self.environment(parameter)
             self.history.store(parameter,obs)
@@ -103,7 +98,7 @@ def run_imgep(N_init:int,
         distance_method,
         mutation_method,
         mixing_method,
-        print_freq:int):
+        ):
 
     policy = OptimizationPolicykNN(mutation_method,
                                 k=k,
@@ -111,9 +106,9 @@ def run_imgep(N_init:int,
                                 mixing_method = mixing_method)
 
     #Explorer for random exploration
-    explorer_random = Randomexploration(N_init,environment,code_generation_method,history,print_freq=print_freq)
+    explorer_random = Randomexploration(N_init,environment,code_generation_method,history)
     #IMGEP explorer
-    explorer_imgep = IMGEP(N,N_init,environment,history,goal_generator,policy,explorer_random,print_freq=print_freq)
+    explorer_imgep = IMGEP(N,N_init,environment,history,goal_generator,policy,explorer_random)
 
     #Run exploration
     explorer_imgep()
