@@ -37,7 +37,7 @@ class Var:
             'status': [],
             'id':[],
         }
-        make_empty_dict =  lambda: {window:0 for window in range(max_instructions//step)}
+        make_empty_dict =  lambda: {window:0 for window in range(1+max_instructions//step)}
         self.hits = {"type":"hit","L1":make_empty_dict(),"L2":make_empty_dict()}
         self.misses = {"type":"miss","L1":make_empty_dict(),"L2":make_empty_dict()}
         self.events = {"L1":{},"L2":{}}
