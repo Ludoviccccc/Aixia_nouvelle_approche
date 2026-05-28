@@ -10,12 +10,14 @@ class OptimizationPolicykNN:
                 mutation_method:MutationInstructions,
                 mixing_method,
                 distance_method:DistanceMethod,
+                representation=None,
                 k=1,
                 ):
         super().__init__()
         self.mutation_method = mutation_method
         self.mixing_method = mixing_method
         self.distance_method = distance_method
+        self.representation = representation
         self.k = k
 
     def __call__(self,goal:np.ndarray,H:History)->dict:
@@ -36,7 +38,10 @@ class OptimizationPolicykNN:
         selects the `self.k` closest parameter outcome indices from the database to the desired goal
         using the loss function `self.loss`
         '''
-        d = self.distance_method(goal,features)
+        if self.representation:
+            d = self.distance_method(goal,features,self.representation.weights)
+        else:
+            d = self.distance_method(goal,features)
         idx = np.argsort(d)[:self.k]
         return idx
 
@@ -44,6 +49,8 @@ class OptimizationPolicykNN:
     def select_closest_parameters(self,goal: dict,history:History)->dict:
         assert len(history)>0, "history empty"
         features = history.as_tab()
+        if self.representation:
+            features = self.representation(features)
         idx = self.feature2closest_parameter(goal,features)
 
         output = []

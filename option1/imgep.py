@@ -8,6 +8,7 @@ from option1.OptimizationPolicy import OptimizationPolicykNN
 from option1.goal_generation import GoalGenerator
 
 from option1.env import Environment
+from option1.representation import Representation
 
 import time
 import numpy as np
@@ -29,16 +30,21 @@ class IMGEP:
                 optimization_policy:OptimizationPolicykNN,
                 randomexploration,
                 periode:int = 1,
+                representation:Representation=None,
+                periode_update_rep:int=None,
                 ):
 
         assert history==randomexploration.history, "provided history class is not equalled to randomexploration's history class"
         assert history==goal_generator.history, "provided history class is not equalled to goal_generator's history class"
+        if periode_update_rep!=None and representation==None:
+            raise TypeError("provided refreshment periode and no representation method")
         self.env = environment
-
+        self.representation = representation
         self.history = history
         self.goal_generator = goal_generator
         self.optimization_policy = optimization_policy
         self.random_explor = randomexploration
+        self.periode_update_rep = periode_update_rep
 
 
         #warm-up budget
@@ -57,6 +63,8 @@ class IMGEP:
         if self.start==0:
             print('initilization')
             self.random_explor()
+            if self.representation:
+                self.representation.update(self.history.as_tab())
         assert len(self.history), "no element in history"
         print('start of imgep')
         for i in tqdm(range(self.N_init,self.N)):
@@ -65,6 +73,9 @@ class IMGEP:
             parameter = self.optimization_policy(goal,self.history)
             observation = self.env(parameter)
             self.history.store(parameter,observation)
+            if self.representation!=None and i%self.periode_update_rep==0:
+                self.representation.update(self.history.as_tab())
+                
         print(time.time() - start_time)
 
     def take(self,content,count):
@@ -98,17 +109,21 @@ def run_imgep(N_init:int,
         distance_method,
         mutation_method,
         mixing_method,
+        representation:Representation=None,
+        periode_update_rep:int=None,
         ):
 
     policy = OptimizationPolicykNN(mutation_method,
                                 k=k,
                                 distance_method=distance_method,
-                                mixing_method = mixing_method)
+                                mixing_method = mixing_method,
+                                representation=representation,
+                                )
 
     #Explorer for random exploration
     explorer_random = Randomexploration(N_init,environment,code_generation_method,history)
     #IMGEP explorer
-    explorer_imgep = IMGEP(N,N_init,environment,history,goal_generator,policy,explorer_random)
+    explorer_imgep = IMGEP(N,N_init,environment,history,goal_generator,policy,explorer_random,representation=representation,periode_update_rep=periode_update_rep)
 
     #Run exploration
     explorer_imgep()
