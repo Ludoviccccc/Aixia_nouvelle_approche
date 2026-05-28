@@ -336,7 +336,7 @@ class Var:
                 else:
                     output_lines.append(f"{step_count}. Write complete, line marked dirty")
             
-            output_lines.append(f"\nTotal cycles: {seq['total_cycles']}")
+            #output_lines.append(f"\nTotal cycles: {seq['total_cycles']}")
             formatted_output.append("\n".join(output_lines))
         
         return "\n".join(formatted_output)
