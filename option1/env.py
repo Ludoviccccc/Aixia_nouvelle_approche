@@ -1,7 +1,7 @@
 import sys
 sys.path.append('../../')
 sys.path.append('../')
-from simulator.sim3 import Var
+from simulator.sim281126 import Var
 from exploration.env.func import Experiment
 
 
