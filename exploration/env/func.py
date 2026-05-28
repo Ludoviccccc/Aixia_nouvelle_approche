@@ -1,6 +1,6 @@
 import sys
 sys.path.append('../../')
-from simulator.sim3 import *
+from simulator.sim281126 import *
 import numpy as np
 import pandas as pd
 
@@ -112,20 +112,3 @@ class Experiment:
         return {
                 'time_core0':max(self.time_values['core0']),
                 'time_core1':max(self.time_values['core1'])}
-        #return self.output_data()
-    #def output_data(self):
-    #    ddr_access = pd.DataFrame([])
-    #    ddr_access['id'] = range(len(self.core0.inst))
-    #    ddr_access['row'] = [0]*len(self.core0.inst)
-    #    ddr_access['bank'] = [0]*len(self.core0.inst)
-    #    ddr_access['status'] = [0]*len(self.core0.inst)
-    #    in_ = pd.DataFrame(self.vars.access_ddr)
-    #    ddr_access.loc[self.vars.access_ddr['id'],ddr_access.keys()] = in_[['id','row','bank','status']].values
-    #    ddr_access.set_index('id',inplace=True)
-    #    #print(ddr_access)
-    #    return {
-    #            'time_core0':max(self.time_values['core0']),
-    #            'time_core1':max(self.time_values['core1']),
-    #            'ddr_simpl_vec_core0':ddr_access,
-    #            #'shared_resource_events':self.vars.shared_resource_events,
-    #            }
