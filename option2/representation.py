@@ -1,5 +1,6 @@
 from sentence_transformers import SentenceTransformer
 import os
+import time
 
 class Representation:
     def __init__(self):
@@ -14,5 +15,8 @@ class Representation:
 
 representation = Representation()
 sentences = ["This is an example sentence", "Each sentence is converted"]
+time0 = time.time()
 print(representation(sentences))
 
+time1 = time.time()
+print(time1 - time0)
