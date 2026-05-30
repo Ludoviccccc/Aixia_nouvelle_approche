@@ -1,10 +1,12 @@
 import numpy as np
 import sys
+import os
 sys.path.append('../')
 from option2.history import History
 from option2.representation import Representation
 
 from transformers import AutoProcessor, AutoModelForCausalLM
+import time
 class GoalGenerator:
     def __init__(self,history:History,
             representation:Representation=None):
@@ -13,7 +15,7 @@ class GoalGenerator:
         #Model to generate goals
 
         root = os.environ['DSDIR'] + '/HuggingFace_Models' 
-        MODEL_ID = os.path.join(root,"google/gemma-4-31B-it")
+        MODEL_ID = os.path.join(root,"deepseek-ai/DeepSeek-V3-Base")
         # Load model
         self.processor = AutoProcessor.from_pretrained(MODEL_ID)
         self.model = AutoModelForCausalLM.from_pretrained(
@@ -22,15 +24,8 @@ class GoalGenerator:
             device_map="auto"
         )
 
-    #def __call__(self):
-    #    features = self.history.as_tab()
-    #    if self.representation:
-    #        features = self.representation(features)
-    #    min_ = features.min(axis=0)
-    #    max_ = features.max(axis=0)+1
-    #    goal = np.random.randint(.5*min_,10*max_)
-    #    return goal
     def __call__(self):
+        time0 = time.time()
         # Prompt
         messages = [
             {"role": "system", "content": "You are a helpful assistant."},
@@ -54,3 +49,5 @@ class GoalGenerator:
         # Parse output
         self.processor.parse_response(response)
 
+        time1 = time.time()
+        print(time1-time0)

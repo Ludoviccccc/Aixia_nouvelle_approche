@@ -16,7 +16,6 @@ class Representation:
 representation = Representation()
 sentences = ["This is an example sentence", "Each sentence is converted"]
 time0 = time.time()
-print(representation(sentences))
-
+print(representation(sentences).shape)
 time1 = time.time()
 print(time1 - time0)
