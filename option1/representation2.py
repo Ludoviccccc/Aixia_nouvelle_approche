@@ -11,16 +11,19 @@ class VAE(nn.Module):
         self.dim = dim  # latent dimension
         
         # Encoder layers
-        self.linear1 = nn.Linear(in_, 32)
-        self.linear2 = nn.Linear(32, 10)
-        self.linear3_mu = nn.Linear(10, dim)  # mean of latent distribution
-        self.linear3_logvar = nn.Linear(10, dim)  # log variance of latent distribution
+        self.linear1 = nn.Linear(in_, 64)
+        self.linear2 = nn.Linear(64, 32)
+        self.linear3 = nn.Linear(32, 32)
+        self.linear4 = nn.Linear(32, 10)
+        self.linear5_mu = nn.Linear(10, dim)  # mean of latent distribution
+        self.linear5_logvar = nn.Linear(10, dim)  # log variance of latent distribution
         
         # Decoder layers
-        self.linear4 = nn.Linear(dim, 10)
-        self.linear5 = nn.Linear(10, 32)
-        self.linear6 = nn.Linear(32, 32)
-        self.linear7 = nn.Linear(32, in_)
+        self.linear6 = nn.Linear(dim, 10)
+        self.linear7 = nn.Linear(10, 32)
+        self.linear8 = nn.Linear(32, 32)
+        self.linear9 = nn.Linear(32, 64)
+        self.linear10 = nn.Linear(64, in_)
         self.actv = nn.ReLU()
 
     def forward(self, x):
@@ -34,18 +37,24 @@ class VAE(nn.Module):
         x = self.actv(x)
         x = self.linear2(x)
         x = self.actv(x)
-        mu = self.linear3_mu(x)
-        logvar = self.linear3_logvar(x)
+        x = self.linear3(x)
+        x = self.actv(x)
+        x = self.linear4(x)
+        x = self.actv(x)
+        mu = self.linear5_mu(x)
+        logvar = self.linear5_logvar(x)
         return mu, logvar
 
     def decoder(self, z):
-        z = self.linear4(z)
-        z = self.actv(z)
-        z = self.linear5(z)
-        z = self.actv(z)
         z = self.linear6(z)
         z = self.actv(z)
         z = self.linear7(z)
+        z = self.actv(z)
+        z = self.linear8(z)
+        z = self.actv(z)
+        z = self.linear9(z)
+        z = self.actv(z)
+        z = self.linear10(z)
         return z
 
     def reparameterize(self, mu, logvar):

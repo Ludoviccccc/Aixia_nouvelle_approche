@@ -35,9 +35,8 @@ dataset = np.array(content['numpy_view'])
 dataset = torch.Tensor(dataset)
 print(sum(dataset[:,-1]))
 print(dataset.min(dim=0)[0].shape)
-#exit()
 dataset = (dataset - dataset.min(dim=0)[0])/(dataset.max(dim=0)[0] - dataset.min(dim=0)[0])
-vae_training(dataset,vae,n_epochs=1000)
+vae_training(dataset,vae,n_epochs=1000,lr=1e-5)
 #
 #from sklearn.cluster import HDBSCAN
 #from sklearn.datasets import load_digits
