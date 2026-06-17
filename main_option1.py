@@ -45,7 +45,7 @@ if __name__=='__main__':
  
     #IMGEP parameters
     k = 1 #Number of neighbors in goal achievement strategy
-    N = 10000 #Number of imgep iterations
+    N = 5000 #Number of imgep iterations
     capacity = N #History capacity
     N_init = 1000 #Number of warming iterations
     print_freq = 100
@@ -62,7 +62,7 @@ if __name__=='__main__':
     addr_management = Address_Management(**simu_params)
     code_generation_method = lambda: addr_management.generate_instruction_sequence(address_x = address_x)
     #history, this class is used by the goal generator, explorer_random and explorer_imgep
-    history = History(capacity=capacity,unused=['time_core0'])
+    history = History(capacity=capacity)#,unused=['time_core0'])
 
     representation = None
     periode_update_rep = None
@@ -77,8 +77,11 @@ if __name__=='__main__':
 
     mutation_method = MutationInstructions(num_mutations,**simu_params)
     mixing_method   = Mix_sequences_interleaved(max_cycle)
-
-    distance_method = DistanceMethod(distance_function)
+    
+    max_tab = np.ones((41,))*10
+    max_tab[-1]  = 300
+    weights = 1.0/max_tab
+    distance_method = DistanceMethod(distance_function,weights=weights)
 
     
     run_imgep(N_init=N_init,
@@ -97,21 +100,26 @@ if __name__=='__main__':
             )
     history.save_pickle(f'{folder}/imgep_N_{N}_k_{k}')
     dim_out = history.as_tab().shape[1]
-    diversity_ = Diversity(min_tab = np.zeros((dim_out,)),
-                            max_tab = np.ones((dim_out,))*10,
+    min_tab = np.zeros((dim_out,))
+    max_tab = np.ones((dim_out,))*10
+    min_tab[-1] = 0
+    max_tab[-1] = 300
+    diversity_ = Diversity(min_tab = min_tab,
+                            max_tab = max_tab,
                             num_bins = 10)
     
     print(f'diversity imgep {diversity_(history.as_tab())}/10**{dim_out}')
     diversity_imgep_list = [diversity_(history.as_tab()[:print_freq*step]) for step in range(N//print_freq)]
     plt.plot(range(0,N,print_freq),diversity_imgep_list,'-.',label="imgep")
 
-    history_rand = History(capacity=capacity,unused=['time_core0'])
+    history_rand = History(capacity=capacity)#,unused=['time_core0'])
     random_explorer = Randomexploration(N,environment,code_generation_method,history_rand)
     random_explorer()
     history_rand.save_pickle(f'{folder}/random_expl_N_{N}')
 
     print(f'diversity random {diversity_(history_rand.as_tab())}/10**{dim_out}')
 
+    print(history_rand.as_tab().shape)
     diversity_random_list = [diversity_(history_rand.as_tab()[:print_freq*step]) for step in range(N//print_freq)]
     plt.plot(range(0,N,print_freq),diversity_random_list,'-.',label="random")
     plt.legend()
@@ -119,3 +127,6 @@ if __name__=='__main__':
     plt.xlabel('experience')
     plt.ylabel(f'number of bins filled out of 10**{dim_out}')
     plt.show()
+
+    print(min(history.memory_observation['time_core0']))
+    print(max(history.memory_observation['time_core0']))

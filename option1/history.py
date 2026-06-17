@@ -38,7 +38,10 @@ class History:
             else:
                 object_ = obs[key]
             if key not in self.unused:
-                tab += object_
+                if type(object_)==int:
+                    tab += [object_]
+                else:
+                    tab += object_
             if key in self.memory_observation:
                 self.memory_observation[key].append(object_)
             else:
