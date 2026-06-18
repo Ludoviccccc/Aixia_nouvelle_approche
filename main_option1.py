@@ -18,7 +18,7 @@ from option1.representation import Representation
 from diversity.diversty import Diversity
 
 
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 def distance_function(goal,features,weights=None):
     x = goal
     v = x-features
@@ -45,7 +45,7 @@ if __name__=='__main__':
  
     #IMGEP parameters
     k = 1 #Number of neighbors in goal achievement strategy
-    N = 5000 #Number of imgep iterations
+    N = 10000 #Number of imgep iterations
     capacity = N #History capacity
     N_init = 1000 #Number of warming iterations
     print_freq = 100
@@ -110,7 +110,7 @@ if __name__=='__main__':
     
     print(f'diversity imgep {diversity_(history.as_tab())}/10**{dim_out}')
     diversity_imgep_list = [diversity_(history.as_tab()[:print_freq*step]) for step in range(N//print_freq)]
-    plt.plot(range(0,N,print_freq),diversity_imgep_list,'-.',label="imgep")
+    #plt.plot(range(0,N,print_freq),diversity_imgep_list,'-.',label="imgep")
 
     history_rand = History(capacity=capacity)#,unused=['time_core0'])
     random_explorer = Randomexploration(N,environment,code_generation_method,history_rand)
@@ -121,12 +121,12 @@ if __name__=='__main__':
 
     print(history_rand.as_tab().shape)
     diversity_random_list = [diversity_(history_rand.as_tab()[:print_freq*step]) for step in range(N//print_freq)]
-    plt.plot(range(0,N,print_freq),diversity_random_list,'-.',label="random")
-    plt.legend()
-    plt.title('diversity over experiences')
-    plt.xlabel('experience')
-    plt.ylabel(f'number of bins filled out of 10**{dim_out}')
-    plt.show()
+    #plt.plot(range(0,N,print_freq),diversity_random_list,'-.',label="random")
+    #plt.legend()
+    #plt.title('diversity over experiences')
+    #plt.xlabel('experience')
+    #plt.ylabel(f'number of bins filled out of 10**{dim_out}')
+    #plt.show()
 
     print(min(history.memory_observation['time_core0']))
     print(max(history.memory_observation['time_core0']))

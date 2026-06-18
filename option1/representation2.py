@@ -84,6 +84,7 @@ def vae_training(dataset, vae, n_epochs=1000, lr=1e-6, batch_size=128):
     lmbda = lambda epoch: 0.99999
     scheduler = MultiplicativeLR(optim, lr_lambda=lmbda)
     loss_record = []
+    mse_record = []
     
     for epoch in range(n_epochs):
         local_loss_record = []
@@ -100,5 +101,7 @@ def vae_training(dataset, vae, n_epochs=1000, lr=1e-6, batch_size=128):
         
         if epoch % 100 == 0:
             print(f'epoch {epoch}, loss {mean_loss}')
+        if epoch % 500 == 0:
+            torch.save(vae.state_dict(), f"weights/vae_{epoch}.pt")
     
     return loss_record
