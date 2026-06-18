@@ -1154,7 +1154,7 @@ class Core:
                 [(cycle, op, addr,id_) for id_,(cycle, (op, addr)) in enumerate(inst.items())]
             )
             if len(self.inst_queue)>self.vars.max_instructions:
-                raise TypeError(f'{self.inst_queue} is larger than {self.var.max_instructions}')
+                raise TypeError(f'{self.inst_queue} is larger than {self.vars.max_instructions}')
         else:
             self.inst_queue = []
         self.inst_ptr = 0
