@@ -14,7 +14,7 @@ U
 {(RD l, SQ, RD l) (WR l,SQ, RD l) (RD l,SQ, WR l), (WD l, SQ,WD l)} où SQ est une séquence faisant intervenir les autres lignes.
 * **Observation space**: periodical data (hit/miss) (i.e every P instruction of a program)
 **On going**:
-* Trying to identify clusters with HDSCBAN in `analyze.py`--> clusters do not allow a good segmentatino of mechanisms (i.e hit/miss data)
+* Trying to identify clusters with HDSCBAN in `analyze.py`--> clusters do not allow a good segmentation of mechanisms (i.e hit/miss data)
 * Trying to fit a simple vae model on imgep data cloud to then identify clusters.
 * Will try to change the mutator operator for less bias in mutation. Produce parameter sequences consist of too many instructions.--> An llm model could satisfy these needs.
 
