@@ -1,40 +1,4 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torch.optim.lr_scheduler import MultiplicativeLR
-
-from torch.utils.data import DataLoader
 import numpy as np
-class AE(nn.Module):
-    def __init__(self,in_,dim):
-        super().__init__()
-        self.linear1 = nn.Linear(in_,32)
-        self.linear2 = nn.Linear(32,10)
-        self.linear3 = nn.Linear(10,10)
-        self.linear4 = nn.Linear(10,32)
-        self.linear5 = nn.Linear(32,32)
-        self.linear6 = nn.Linear(32,in_)
-        self.actv = nn.ReLU()
-
-    def forward(self,x):
-        x = self.encoder(x)
-        x = self.decoder(x)
-        return x
-    def encoder(self,x):
-        x = self.linear1(x)
-        x = self.actv(x)
-        x = self.linear2(x)
-        x = self.actv(x)
-        x = self.linear3(x)
-        return x
-    def decoder(self,x):
-        x = self.actv(x)
-        x = self.linear4(x)
-        x = self.actv(x)
-        x = self.linear5(x)
-        x = self.actv(x)
-        x = self.linear6(x)
-        return x
 
 def training(dataset,ae,n_epochs = 1000,lr=1e-6,batch_size = 128):
     optim = torch.optim.Adam(ae.parameters(),lr=lr)
