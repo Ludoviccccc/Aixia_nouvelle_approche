@@ -88,19 +88,25 @@ def vae_training(dataset, vae, n_epochs=1000, lr=1e-6, batch_size=128):
     
     for epoch in range(n_epochs):
         local_loss_record = []
+        local_mse_loss_record = []
         for x in data:
             optim.zero_grad()
             recon_x, mu, logvar = vae(x)
             loss = vae_loss(recon_x, x, mu, logvar)
+            mse_loss = F.mse_loss(x,recon_x)
             loss.backward()
             optim.step()
             local_loss_record.append(loss.item())
+            local_mse_loss_record.append(mse_loss.item())
+
         mean_loss = np.mean(local_loss_record)
+        mean_mse_loss = np.mean(local_mse_loss_record)
         loss_record.append(mean_loss)
+        mse_record.append(mean_mse_loss)
         scheduler.step()
         
         if epoch % 100 == 0:
-            print(f'epoch {epoch}, loss {mean_loss}')
+            print(f'epoch {epoch}, loss {mean_loss}, mse {mean_mse_loss}')
         if epoch % 500 == 0:
             torch.save(vae.state_dict(), f"weights/vae_{epoch}.pt")
     
