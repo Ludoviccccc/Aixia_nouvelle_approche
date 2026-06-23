@@ -45,50 +45,69 @@ plt.show()
 
 print(min(content_imgep['memory_observation']['time_core0']))
 print(max(content_imgep['memory_observation']['time_core0']))
-
-
-#Observe time values
-##########################################################""
-plt.figure()
-plt.plot(range(N),content_random['memory_observation']['time_core0'],'.',label='random')
-plt.plot(range(N),content_imgep['memory_observation']['time_core0'],'.',label='imgep')
-plt.xlabel('id')
-plt.ylabel('temps cycle')
-plt.legend()
-
-#Observe time values wrt average distance of used address to main address address_x
-##########################################################""
-def distance2address(address,parameter):
-    parameter_adresses = [parameter[key][1] for key in parameter]
-    output = np.mean(np.abs(address - np.array(parameter_adresses)))
-    return output
-
-mean_distance_to_address_program_imgep = np.array([distance2address(5,param) for param in content_imgep['memory_parameter']])
-mean_distance_to_address_program_random = np.array([distance2address(5,param) for param in content_random['memory_parameter']])
-plt.figure()
-plt.plot(mean_distance_to_address_program_random,content_random['memory_observation']['time_core0'],'.',label="random")
-plt.plot(mean_distance_to_address_program_imgep,content_imgep['memory_observation']['time_core0'],'.',label="imgep")
-plt.xlabel(f'mean L1 distance between used addresses and address X={address_x}')
-plt.ylabel('execution time')
-plt.legend()
-plt.show()
-########################################################
-len_param_random = [len(param) for param in content_random['memory_parameter']]
-len_param_imgep = [len(param) for param in content_imgep['memory_parameter']]
-plt.figure()
-ll=N
-plt.scatter(range(N)[:ll],len_param_random[:ll],label='random')
-plt.scatter(range(N)[:ll],len_param_imgep[:ll],label='imgep')
-plt.legend()
-plt.show()
-tab_misses_l2_imgep = np.array(content_imgep['memory_observation']['cache_misses_l2'])
+#
+#
+##Observe time values
+###########################################################""
+#plt.figure()
+#plt.plot(range(N),content_random['memory_observation']['time_core0'],'.',label='random')
+#plt.plot(range(N),content_imgep['memory_observation']['time_core0'],'.',label='imgep')
+#plt.xlabel('id')
+#plt.ylabel('temps cycle')
+#plt.legend()
+#
+##Observe time values wrt average distance of used address to main address address_x
+###########################################################""
+#def distance2address(address,parameter):
+#    parameter_adresses = [parameter[key][1] for key in parameter]
+#    output = np.mean(np.abs(address - np.array(parameter_adresses)))
+#    return output
+#
+#mean_distance_to_address_program_imgep = np.array([distance2address(5,param) for param in content_imgep['memory_parameter']])
+#mean_distance_to_address_program_random = np.array([distance2address(5,param) for param in content_random['memory_parameter']])
+#plt.figure()
+#plt.plot(mean_distance_to_address_program_random,content_random['memory_observation']['time_core0'],'.',label="random")
+#plt.plot(mean_distance_to_address_program_imgep,content_imgep['memory_observation']['time_core0'],'.',label="imgep")
+#plt.xlabel(f'mean L1 distance between used addresses and address X={address_x}')
+#plt.ylabel('execution time')
+#plt.legend()
+#plt.show()
+#########################################################
+#len_param_random = [len(param) for param in content_random['memory_parameter']]
+#len_param_imgep = [len(param) for param in content_imgep['memory_parameter']]
+#plt.figure()
+#ll=N
+#plt.scatter(range(N)[:ll],len_param_random[:ll],label='random')
+#plt.scatter(range(N)[:ll],len_param_imgep[:ll],label='imgep')
+#plt.legend()
+#plt.show()
 #Attempt to identify clusters
 #######################################################
+tab_misses_l2_imgep = np.array(content_imgep['memory_observation']['cache_misses_l2'])
 from sklearn.cluster import HDBSCAN
 hdb = HDBSCAN(copy=True, min_cluster_size=400)
-hdb.fit(tab_misses_l2_imgep)
+data = tab_misses_l2_imgep
+#min max norm
+print('data shape', data.shape)
+print('min data',data.min(axis=0).shape)
+data = (data - data.min(axis=0))/(1+ data.max(axis=0) - data.min(axis=0))
+hdb.fit(data)
 print('labels',np.unique(hdb.labels_))
-
+data_list = {key:[] for key in np.unique(hdb.labels_)}
+for j in range(N):
+    data_list[hdb.labels_[j]].append(tab_misses_l2_imgep[j])
+plt.figure()
+for j in range(-1,2):
+    #if j==0:
+    #    pass
+   plt.plot(np.mean(data_list[j],axis=0),'-o',label=f'label {j}')
+   plt.plot(np.std(data_list[j],axis=0),'-o',label=f'std label {j}')
+plt.title('average number of miss for each window')
+plt.legend()
+plt.show()
+#
+#
+#
 for j in range(N):
     plt.plot(tab_misses_l2_imgep[j],['black','blue','yellow','pink','red'][hdb.labels_[j]])
 plt.show()
