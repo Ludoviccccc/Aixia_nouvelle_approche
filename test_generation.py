@@ -101,9 +101,11 @@ if __name__=='__main__':
         programs = [p1,p2]
         mixture = mixing_method(programs)
         environment(mixture)
-        print('p1',p1)
-        print('p2',p2)
+        results = environment.var.analyze_bandwidth_per_core()
+        #print('p1',p1)
+        #print('p2',p2)
         print("mixture",mixture)
+        #print(results)
     else:
         #Explorer for random exploration
         explorer_random = randomexploration(N_init,environment,lambda: addr_management.generate_instruction_sequence(address_x=address_x),history,print_freq=print_freq)
