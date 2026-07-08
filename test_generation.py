@@ -1,7 +1,6 @@
 import random
 import numpy as np
 
-from simulator.sim3 import Var
 
 from option1.codegeneration import Address_Management 
 from option1.history import History
@@ -101,6 +100,7 @@ if __name__=='__main__':
         p2 = g()
         programs = [p1,p2]
         mixture = mixing_method(programs)
+        environment(mixture)
         print('p1',p1)
         print('p2',p2)
         print("mixture",mixture)

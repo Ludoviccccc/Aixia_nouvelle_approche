@@ -1,6 +1,6 @@
 import sys
 sys.path.append('../../')
-from simulator.sim281126 import *
+from simulator.sim070726 import *
 import numpy as np
 #import pandas as pd
 
