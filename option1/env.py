@@ -3,7 +3,7 @@ sys.path.append('../../')
 sys.path.append('../')
 from simulator.sim070726 import Var
 from exploration.env.func import Experiment
-
+import numpy as np
 
 class Environment:
     def __init__(self,
@@ -17,18 +17,42 @@ class Environment:
         self.num_addr = max_address - min_address
         self.step = step
         self.max_instructions = max_instructions
-    def __call__(self,program):
+        self.max_cycle = 400
+    def __call__(self,program:dict):
         self.var = Var(step = self.step,
                        max_instructions = self.max_instructions)
         experiment = Experiment(self.var,
                                 num_banks=self.num_banks,
                                 num_addr = self.num_addr)
-        experiment.load_instr(core0_inst = program,core1_inst = [])
-        out = experiment.simulate(400)
+        experiment.load_instr(core0_inst = program['core0'],core1_inst =program['core1'])
+        out = experiment.simulate(self.max_cycle)
         
+        
+        results =  self.var.analyze_bandwidth_per_core()
+        bandwidth_core0_bus = np.zeros((self.max_cycle//self.var.bandwidth_window_size,))
+        bandwidth_core1_bus = np.zeros((self.max_cycle//self.var.bandwidth_window_size,))
+        bandwidth_core0_ddr = np.zeros((self.max_cycle//self.var.bandwidth_window_size,))
+        bandwidth_core1_ddr = np.zeros((self.max_cycle//self.var.bandwidth_window_size,))
+        print(results['cores'].keys())
+        if 0 in results['cores']:
+            for id_ in results['cores'][0]['bus']['windows']:
+                bandwidth_core0_bus[id_] = results['cores'][0]['bus']['windows'][id_]['total_commands']
+        if 0 in results['cores']:
+            for id_ in results['cores'][0]['ddr']['windows']:
+                bandwidth_core0_ddr[id_] = results['cores'][0]['ddr']['windows'][id_]['total_commands']
+        if 1 in results['cores']:
+            for id_ in results['cores'][1]['bus']['windows']:
+                bandwidth_core1_bus[id_] = results['cores'][1]['bus']['windows'][id_]['total_commands']
+        if 1 in results['cores']:
+            for id_ in results['cores'][1]['ddr']['windows']:
+                bandwidth_core1_ddr[id_] = results['cores'][1]['ddr']['windows'][id_]['total_commands']
 
         obs = {
             'cache_hit_l1':self.var.hits['L1'],
+            'bus_bandwidth_core_0':bandwidth_core0_bus,
+            'bus_bandwidth_core_0':bandwidth_core0_bus,
+            'ddr_bandwidth_core_0':bandwidth_core0_ddr,
+            'ddr_bandwidth_core_0':bandwidth_core0_ddr,
             'cache_hit_l2':self.var.hits['L2'],
             'cache_misses_l1':self.var.misses['L1'],
             'cache_misses_l2':self.var.misses['L2'],
