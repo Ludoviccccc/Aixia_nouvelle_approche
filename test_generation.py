@@ -67,7 +67,7 @@ if __name__=='__main__':
     print_freq = 100 #print iteration step every print_freq
     num_mutations = 1 #Nb of mutations in goal achievement strategy
     address_x = 5
-    test_mode =  True
+    test_mode =  False
 
 
     #Envionment class 
@@ -113,7 +113,7 @@ if __name__=='__main__':
 
 
         #IMGEP explorer
-        explorer_imgep = IMGEP(N,N_init,environment,history,goalgenerator,policy,explorer_random,print_freq=print_freq)
+        explorer_imgep = IMGEP(N,N_init,environment,history,goalgenerator,policy,explorer_random)
 
         #Run exploration
         explorer_imgep()

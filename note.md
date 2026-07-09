@@ -1,6 +1,6 @@
 **Definition**
 
-* Mechanism: Behvarior unit that is described as with a performance counter.
+* Mechanism: Behavior unit that is described as with a performance counter.
 * Behavior: a dynamic during the execution on the platform. It can be made from multiple mechanisms. 
 * Interference source: An interference source is a component on the processor that has simultaneous use by several cores or other initiators that may entail interferences. Examples of interference sources are shared caches and interconnect. (Technical Report/FAA)
 

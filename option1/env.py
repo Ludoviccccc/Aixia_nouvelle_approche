@@ -12,28 +12,30 @@ class Environment:
             num_banks = 8,
             max_instructions:int=100,
             step:int=10,
+            max_cycle = 150,
             ):
         self.num_banks = num_banks
         self.num_addr = max_address - min_address
         self.step = step
         self.max_instructions = max_instructions
-        self.max_cycle = 400
+        self.max_cycle = max_cycle
     def __call__(self,program:dict):
-        self.var = Var(step = self.step,
-                       max_instructions = self.max_instructions)
+        self.var = Var(max_instructions = self.max_instructions,
+                       max_cycle = self.max_cycle)
         experiment = Experiment(self.var,
                                 num_banks=self.num_banks,
                                 num_addr = self.num_addr)
-        experiment.load_instr(core0_inst = program['core0'],core1_inst =program['core1'])
+        #experiment.load_instr(core0_inst = program['core0'],core1_inst =program['core1'])
+        experiment.load_instr(core0_inst = program,core1_inst =[])
         out = experiment.simulate(self.max_cycle)
         
         
         results =  self.var.analyze_bandwidth_per_core()
-        bandwidth_core0_bus = np.zeros((self.max_cycle//self.var.bandwidth_window_size,))
-        bandwidth_core1_bus = np.zeros((self.max_cycle//self.var.bandwidth_window_size,))
-        bandwidth_core0_ddr = np.zeros((self.max_cycle//self.var.bandwidth_window_size,))
-        bandwidth_core1_ddr = np.zeros((self.max_cycle//self.var.bandwidth_window_size,))
-        print(results['cores'].keys())
+        make_empty_dict = lambda:{window:0 for window in range(self.max_cycle//self.var.bandwidth_window_size)}
+        bandwidth_core0_bus = make_empty_dict() 
+        bandwidth_core1_bus = make_empty_dict() 
+        bandwidth_core0_ddr = make_empty_dict() 
+        bandwidth_core1_ddr = make_empty_dict() 
         if 0 in results['cores']:
             for id_ in results['cores'][0]['bus']['windows']:
                 bandwidth_core0_bus[id_] = results['cores'][0]['bus']['windows'][id_]['total_commands']

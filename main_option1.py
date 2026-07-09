@@ -78,7 +78,7 @@ if __name__=='__main__':
     mutation_method = MutationInstructions(num_mutations,**simu_params)
     mixing_method   = Mix_sequences_interleaved(max_cycle)
     
-    max_tab = np.ones((40,))*10
+    max_tab = np.ones((90,))*10
     #max_tab[-1]  = 300
     weights = 1.0/max_tab
     distance_method = DistanceMethod(distance_function,weights=weights)
@@ -98,13 +98,13 @@ if __name__=='__main__':
             representation=representation,
             periode_update_rep=periode_update_rep,
             )
-    history.save_pickle(f'{folder}/imgep_N_{N}_k_{k}')
+    history.save_pickle(f'{folder}/imgep_bandwidth_N_{N}_k_{k}')
 
 
     history_rand = History(capacity=capacity,unused=['time_core0'])
     random_explorer = Randomexploration(N,environment,code_generation_method,history_rand)
     random_explorer()
-    history_rand.save_pickle(f'{folder}/random_expl_N_{N}')
+    history_rand.save_pickle(f'{folder}/random_bandwidth_expl_N_{N}')
 
 
 

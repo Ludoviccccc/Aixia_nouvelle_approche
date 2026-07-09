@@ -23,12 +23,11 @@ import numpy as np
 
 class Var:
     def __init__(self,
-            step:int=10,
             max_instructions:int=100,
+            max_cycle:int=400,
                       ):
 
         # In Var.__init__, add after the existing tracking structures:
-        
         # Per-core bandwidth tracking structures
         self.bus_commands = []  # List of (cycle, command_type, core_id, addr)
         self.ddr_commands = []  # List of (cycle, command_type, core_id, addr, bank, row)
@@ -56,6 +55,7 @@ class Var:
         # New: Track shared resource contention
         self.shared_resource_events = []
         self.max_instructions = max_instructions
+        self.max_cycle = max_cycle
         self.access_ddr = {
             'cycle': [],
             'core_id': [],
@@ -66,11 +66,10 @@ class Var:
             'status': [],
             'id':[],
         }
-        make_empty_dict =  lambda: {window:0 for window in range(max_instructions//step)}
+        make_empty_dict =  lambda: {window:0 for window in range(max_cycle//self.bandwidth_window_size)}
         self.hits = {"type":"hit","L1":make_empty_dict(),"L2":make_empty_dict()}
         self.misses = {"type":"miss","L1":make_empty_dict(),"L2":make_empty_dict()}
         self.events = {"L1":{},"L2":{}}
-        self.step = step
         self.count = 0
         
         # NEW: Detailed instruction sequence tracking
@@ -509,17 +508,17 @@ class Var:
                 "core_id": core_id,
                 "way": way
                 }
-        if id_>=self.max_instructions:
-            raise TypeError(f'id_ {id_} is too big')
+        if cycle>=self.max_cycle:
+            raise TypeError(f'cycle {cycle} is too big')
         #add to self.events dictionary
         if addr not in self.events[level]:
             self.events[level][addr] = [access]
         else:
             self.events[level][addr].append(access)
         if type_=="miss":
-            self.misses[level][id_//self.step] += 1
+            self.misses[level][cycle//self.bandwidth_window_size] += 1
         if type_=="hit":
-            self.hits[level][id_//self.step] += 1
+            self.hits[level][cycle//self.bandwidth_window_size] += 1
         if level=='L1':
             self.count +=1
         
