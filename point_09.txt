@@ -1,0 +1,26 @@
+Ne pas dire à l'algo ce ue j'ai essayé.
+
+* demander claude, quels methodes peuvent fonctionner sur des données discrètes. et sir umap fonctionne sur ça
+
+
+* expliquer nature des données, umap sur dimension 2 --> pattate shape, qu'est-ce que ça signifie ? 
+
+* generer artificiellement, des données clusterisées dans l'espace de comportement
+* generer des patternes d'accès dont je sais qu'il y a effictivement deux clusters.
+
+* créer distribution multimodale dans l'espace à N dimension de mes matrices, je sample des données selon, je les discretise (les données)
+
+
+Voir pour une réunion Eric, PY, Clément. Voir avec PY
+
+Voir quel type de conf où c'est publiable.
+
+nouveau cas d'usage qui a une réalité industrielle sur lesquelles on peut utiliser des algo diverity search.
+
+
+Dire à Eric, important que je puisse à publier dans notre communauté. 
+Dire à Py que c'est important que j'aie un papier qui gravite dans les activités de flowers.
+
+
+AI for science communauté:
+Regarder pour une conférence.
