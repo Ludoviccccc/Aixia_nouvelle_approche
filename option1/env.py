@@ -12,7 +12,7 @@ class Environment:
             num_banks = 8,
             max_instructions:int=100,
             step:int=10,
-            max_cycle = 150,
+            max_cycle = 120,
             ):
         self.num_banks = num_banks
         self.num_addr = max_address - min_address
@@ -25,7 +25,6 @@ class Environment:
         experiment = Experiment(self.var,
                                 num_banks=self.num_banks,
                                 num_addr = self.num_addr)
-        #experiment.load_instr(core0_inst = program['core0'],core1_inst =program['core1'])
         experiment.load_instr(core0_inst = program,core1_inst =[])
         out = experiment.simulate(self.max_cycle)
         
@@ -50,14 +49,14 @@ class Environment:
                 bandwidth_core1_ddr[id_] = results['cores'][1]['ddr']['windows'][id_]['total_commands']
 
         obs = {
-            'cache_hit_l1':self.var.hits['L1'],
+            #'cache_hit_l1':self.var.hits['L1'],
             'bus_bandwidth_core_0':bandwidth_core0_bus,
-            'bus_bandwidth_core_0':bandwidth_core0_bus,
+            'bus_bandwidth_core_1':bandwidth_core1_bus,
             'ddr_bandwidth_core_0':bandwidth_core0_ddr,
-            'ddr_bandwidth_core_0':bandwidth_core0_ddr,
-            'cache_hit_l2':self.var.hits['L2'],
-            'cache_misses_l1':self.var.misses['L1'],
+            'ddr_bandwidth_core_1':bandwidth_core1_ddr,
+            #'cache_hit_l2':self.var.hits['L2'],
+            #'cache_misses_l1':self.var.misses['L1'],
             'cache_misses_l2':self.var.misses['L2'],
-            'time_core0':out['time_core0']
+            #'time_core0':out['time_core0']
             }
         return obs

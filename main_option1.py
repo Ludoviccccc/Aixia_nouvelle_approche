@@ -35,7 +35,7 @@ if __name__=='__main__':
     simu_params = {
     "min_address" : 0,
     "max_address" : 19,
-    "max_instructions" : 10,
+    "max_instructions" : 50,
     }
 
 
@@ -49,7 +49,7 @@ if __name__=='__main__':
     capacity = N #History capacity
     N_init = 1000 #Number of warming iterations
     print_freq = 100
-    num_mutations = 2 #Nb of mutations in goal achievement strategy
+    num_mutations = 3 #Nb of mutations in goal achievement strategy
 
     #address X to work on
     address_x = 5
@@ -78,7 +78,7 @@ if __name__=='__main__':
     mutation_method = MutationInstructions(num_mutations,**simu_params)
     mixing_method   = Mix_sequences_interleaved(max_cycle)
     
-    max_tab = np.ones((90,))*10
+    max_tab = np.ones((60,))*10
     #max_tab[-1]  = 300
     weights = 1.0/max_tab
     distance_method = DistanceMethod(distance_function,weights=weights)
