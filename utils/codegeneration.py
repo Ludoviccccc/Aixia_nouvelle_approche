@@ -54,4 +54,8 @@ class Address_Management:
             #instructions[cycle] = (instr_type, address)
             instructions[cycle] = (instr_type, address)
         return dict(sorted(instructions.items()))
-    def generate_per_instruction_sequence(self,address_x):
+    def generate_pair_instruction_sequence(self,address_x):
+        output = {}
+        output['core0'] = self.generate_instruction_sequence(address=address_x)
+        output['core1'] = self.generate_instruction_sequence(address=address_x)
+        return output

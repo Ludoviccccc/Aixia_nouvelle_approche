@@ -4,16 +4,16 @@ import json
 import sys
 
 
-from option1.codegeneration import Address_Management 
-from option1.history import History
-from option1.OptimizationPolicy import OptimizationPolicykNN
-from option1.distance import DistanceMethod
-from option1.mutation import MutationInstructions
-from option1.mix_interleaving import Mix_sequences_interleaved
-from option1.goal_generation import GoalGenerator
-from option1.imgep import run_imgep,Randomexploration
-from option1.env import Environment
-#from option1.representation import Representation
+from utils.codegeneration import Address_Management 
+from utils.history import History
+from utils.OptimizationPolicy import OptimizationPolicykNN
+from utils.distance import DistanceMethod
+from utils.mutation import MutationInstructions
+from utils.mix_interleaving import Mix_sequences_interleaved
+from utils.goal_generation import GoalGenerator
+from utils.imgep import run_imgep,Randomexploration
+from utils.env import Environment
+#from utils.representation import Representation
 
 from diversity.diversty import Diversity
 
@@ -60,7 +60,7 @@ if __name__=='__main__':
     environment = Environment(step = step,num_banks=8,**simu_params)
     
     addr_management = Address_Management(**simu_params)
-    code_generation_method = lambda: addr_management.generate_instruction_sequence(address_x = address_x)
+    code_generation_method = lambda: addr_management.generate_pair_instruction_sequence(address_x = address_x)
     #history, this class is used by the goal generator, explorer_random and explorer_imgep
     history = History(capacity=capacity,unused=['time_core0'])
 
@@ -105,6 +105,3 @@ if __name__=='__main__':
     random_explorer = Randomexploration(N,environment,code_generation_method,history_rand)
     random_explorer()
     history_rand.save_pickle(f'{folder}/random_bandwidth_expl_N_{N}')
-
-
-

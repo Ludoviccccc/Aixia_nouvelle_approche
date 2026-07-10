@@ -19,7 +19,7 @@ class Environment:
         self.step = step
         self.max_instructions = max_instructions
         self.max_cycle = max_cycle
-    def __call__(self,program:dict):
+    def run_experiment(self,program:dict):
         self.var = Var(max_instructions = self.max_instructions,
                        max_cycle = self.max_cycle)
         experiment = Experiment(self.var,
@@ -60,3 +60,5 @@ class Environment:
             #'time_core0':out['time_core0']
             }
         return obs
+    def __call__(self,program:dict):
+        return self.run_experiment(program)
