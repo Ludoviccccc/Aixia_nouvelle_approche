@@ -25,7 +25,7 @@ class Environment:
         experiment = Experiment(self.var,
                                 num_banks=self.num_banks,
                                 num_addr = self.num_addr)
-        experiment.load_instr(core0_inst = program,core1_inst =[])
+        experiment.load_instr(core0_inst = program['core0'],core1_inst =program['core1'])
         out = experiment.simulate(self.max_cycle)
         
         

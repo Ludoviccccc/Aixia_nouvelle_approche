@@ -54,3 +54,4 @@ class Address_Management:
             #instructions[cycle] = (instr_type, address)
             instructions[cycle] = (instr_type, address)
         return dict(sorted(instructions.items()))
+    def generate_per_instruction_sequence(self,address_x):
