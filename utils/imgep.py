@@ -3,12 +3,12 @@ import sys
 sys.path.append("../")
 sys.path.append("../../")
 
-from option1.history import History
-from option1.OptimizationPolicy import OptimizationPolicykNN
-from option1.goal_generation import GoalGenerator
+from utils.history import History
+from utils.OptimizationPolicy import OptimizationPolicykNN
+from utils.goal_generation import GoalGenerator
 
-from option1.env import Environment
-from option1.representation import Representation
+from utils.env import Environment
+from utils.representation import Representation
 
 import time
 import numpy as np

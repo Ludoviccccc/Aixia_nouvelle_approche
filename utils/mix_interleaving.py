@@ -6,7 +6,7 @@ class Mix_sequences_interleaved:
         self.max_cycle = max_cycle
         self.chunk_size = chunk_size  # If None, split at shared address occurrences
     
-    def __call__(self, sequences: list, seed: int = None):
+    def mix(self, sequences: list, seed: int = None):
         """
         Randomly mixes multiple instruction programs by interleaving chunks of instructions
         while preserving relative timing delays within each original program.
@@ -216,7 +216,12 @@ class Mix_sequences_interleaved:
             else:
                 break
         return compressed
-
+    def __call__(self, sequences: list, seed: int = None):
+        programs_core0 = [seq['core0'] for seq in sequences]
+        programs_core1 = [seq['core1'] for seq in sequences]
+        output = {'core0':self.mix(sequences=programs_core0,seed=seed),
+                  'core1':self.mix(sequences=programs_core1,seed=seed)}
+        return output
 
 # Example usage
 #if __name__ == "__main__":
