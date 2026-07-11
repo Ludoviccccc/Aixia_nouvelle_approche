@@ -4,16 +4,16 @@ import json
 import sys
 
 
-from option1.codegeneration import Address_Management 
-from option1.history import History
-from option1.OptimizationPolicy import OptimizationPolicykNN
-from option1.distance import DistanceMethod
-from option1.mutation import MutationInstructions
-from option1.mix_interleaving import Mix_sequences_interleaved
-from option1.goal_generation import GoalGenerator
-from option1.imgep import run_imgep,Randomexploration
-from option1.env import Environment
-#from option1.representation import Representation
+from utils.codegeneration import Address_Management 
+from utils.history import History
+from utils.OptimizationPolicy import OptimizationPolicykNN
+from utils.distance import DistanceMethod
+from utils.mutation import MutationInstructions
+from utils.mix_interleaving import Mix_sequences_interleaved
+from utils.goal_generation import GoalGenerator
+from utils.imgep import run_imgep,Randomexploration
+from utils.env import Environment
+#from utils.representation import Representation
 
 from diversity.diversty import Diversity
 

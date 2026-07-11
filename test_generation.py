@@ -2,15 +2,15 @@ import random
 import numpy as np
 
 
-from option1.codegeneration import Address_Management 
-from option1.history import History
-from option1.OptimizationPolicy import OptimizationPolicykNN
-from option1.distance import DistanceMethod
-from option1.mutation import MutationInstructions
-from option1.mix_interleaving import Mix_sequences_interleaved
-from option1.goal_generation import GoalGenerator
-from option1.imgep import IMGEP
-from option1.env import Environment
+from utils.codegeneration import Address_Management 
+from utils.history import History
+from utils.OptimizationPolicy import OptimizationPolicykNN
+from utils.distance import DistanceMethod
+from utils.mutation import MutationInstructions
+from utils.mix_interleaving import Mix_sequences_interleaved
+from utils.goal_generation import GoalGenerator
+from utils.imgep import IMGEP
+from utils.env import Environment
 
 from exploration.env.func import Experiment
 
@@ -67,7 +67,7 @@ if __name__=='__main__':
     print_freq = 100 #print iteration step every print_freq
     num_mutations = 1 #Nb of mutations in goal achievement strategy
     address_x = 5
-    test_mode =  False
+    test_mode =  True
 
 
     #Envionment class 
@@ -99,11 +99,14 @@ if __name__=='__main__':
         p1 = g()
         p2 = g()
         programs = [p1,p2]
-        #mixture = mixing_method(programs)
-        program = {'core0':p1,'core1':p2}
-        print('p1',p1)
-        print('p2',p2)
-        output = environment(program)
+        mixture = mixing_method(programs)
+        mutation = mutation_method(p1)
+        print('p1',len(p1.keys()))
+        print('p2',len(p2.keys()))
+        print('observinv lenghts of operators\' outputs')
+        print('mixture len', len(mixture.keys()))
+        print('mutation len', len(mutation.keys()))
+        output = environment(p1)
         results = environment.var.analyze_bandwidth_per_core()
         print(output)
         #print("mixture",mixture)

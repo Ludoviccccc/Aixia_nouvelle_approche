@@ -2,9 +2,9 @@ import random
 import numpy as np
 import sys
 sys.path.append("../")
-from option1.history import History
-from option1.distance import DistanceMethod
-from option1.mutation import MutationInstructions
+from utils.history import History
+from utils.distance import DistanceMethod
+from utils.mutation import MutationInstructions
 class OptimizationPolicykNN:
     def __init__(self,
                 mutation_method:MutationInstructions,

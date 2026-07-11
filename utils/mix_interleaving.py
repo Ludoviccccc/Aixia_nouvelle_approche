@@ -216,16 +216,3 @@ class Mix_sequences_interleaved:
             else:
                 break
         return compressed
-
-
-# Example usage
-#if __name__ == "__main__":
-#    p1 = {3: ('read', 5), 14: ('read', 10), 26: ('read', 18), 29: ('write', 5)}
-#    p2 = {4: ('read', 5), 12: ('write', 7), 32: ('read', 8), 35: ('write', 12), 39: ('write', 1), 51: ('write', 5)}
-#    
-#    mixer = Mix_sequences_interleaved(max_cycle=60)
-#    mixture = mixer([p1, p2], seed=42)
-#    
-#    print("Mixed program:")
-#    for cycle in sorted(mixture.keys()):
-#        print(f"  {cycle}: {mixture[cycle]}")

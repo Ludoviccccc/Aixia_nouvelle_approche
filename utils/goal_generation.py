@@ -1,8 +1,8 @@
 import numpy as np
 import sys
 sys.path.append('../')
-from option1.history import History
-from option1.representation import Representation
+from utils.history import History
+from utils.representation import Representation
 class GoalGenerator:
     def __init__(self,history:History,
             representation:Representation=None):
