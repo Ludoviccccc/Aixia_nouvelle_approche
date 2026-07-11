@@ -2,15 +2,15 @@ import random
 import numpy as np
 
 
-from option1.codegeneration import Address_Management 
-from option1.history import History
-from option1.OptimizationPolicy import OptimizationPolicykNN
-from option1.distance import DistanceMethod
-from option1.mutation import MutationInstructions
-from option1.mix_interleaving import Mix_sequences_interleaved
-from option1.goal_generation import GoalGenerator
-from option1.imgep import IMGEP
-from option1.env import Environment
+from utils.codegeneration import Address_Management 
+from utils.history import History
+from utils.OptimizationPolicy import OptimizationPolicykNN
+from utils.distance import DistanceMethod
+from utils.mutation import MutationInstructions
+from utils.mix_interleaving import Mix_sequences_interleaved
+from utils.goal_generation import GoalGenerator
+from utils.imgep import IMGEP
+from utils.env import Environment
 
 from exploration.env.func import Experiment
 
@@ -67,7 +67,7 @@ if __name__=='__main__':
     print_freq = 100 #print iteration step every print_freq
     num_mutations = 1 #Nb of mutations in goal achievement strategy
     address_x = 5
-    test_mode =  False
+    test_mode =  True
 
 
     #Envionment class 
@@ -95,18 +95,23 @@ if __name__=='__main__':
     
 
     if test_mode:
-        g = lambda: addr_management.generate_instruction_sequence(address_x=address_x) 
+        g = lambda: addr_management(address_x=address_x) 
         p1 = g()
         p2 = g()
+        print('p1', p1)
         programs = [p1,p2]
-        #mixture = mixing_method(programs)
-        program = {'core0':p1,'core1':p2}
-        print('p1',p1)
-        print('p2',p2)
-        output = environment(program)
-        results = environment.var.analyze_bandwidth_per_core()
-        print(output)
-        #print("mixture",mixture)
+        mixture = mixing_method(programs)
+        #program = {'core0':p1,'core1':p2}
+        #print('p1',p1)
+        #print('p2',p2)
+        #output = environment(program)
+        #results = environment.var.analyze_bandwidth_per_core()
+        #print(output)
+        print("mixture",mixture)
+        print('core 0 p1 len',len(p1['core0'].keys()))
+        print('core 1 p1 len',len(p1['core1'].keys()))
+        print('core0 len', len(mixture['core0'].keys()))
+        print('core1 len', len(mixture['core1'].keys()))
     else:
         #Explorer for random exploration
         explorer_random = randomexploration(N_init,environment,lambda: addr_management.generate_instruction_sequence(address_x=address_x),history,print_freq=print_freq)
