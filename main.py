@@ -41,7 +41,9 @@ if __name__=='__main__':
 
 
     #Simulation parameters
-    max_cycle = 60 #Maximum cycle in simulation
+    max_cycle_instructions = 60 #Maximum cycle in instructions
+    max_cycle_simulation = 120
+    bandwidth_window_size = 20
  
     #IMGEP parameters
     k = 1 #Number of neighbors in goal achievement strategy
@@ -57,10 +59,10 @@ if __name__=='__main__':
     folder = 'results'
 
     #Envionment class 
-    environment = Environment(step = step,num_banks=8,**simu_params)
+    environment = Environment(step = step,num_banks=8,max_cycle_simulation = max_cycle_simulation,bandwidth_window_size = bandwidth_window_size,**simu_params)
     
-    addr_management = Address_Management(**simu_params)
-    code_generation_method = lambda: addr_management.generate_pair_instruction_sequence(address_x = address_x)
+    addr_management = Address_Management(max_cycle = max_cycle_instructions,**simu_params)
+    code_generation_method = lambda: addr_management(address_x = address_x)
     #history, this class is used by the goal generator, explorer_random and explorer_imgep
     history = History(capacity=capacity,unused=['time_core0'])
 
@@ -76,11 +78,11 @@ if __name__=='__main__':
     #optimization policy models
 
     mutation_method = MutationInstructions(num_mutations,**simu_params)
-    mixing_method   = Mix_sequences_interleaved(max_cycle)
+    mixing_method   = Mix_sequences_interleaved(max_cycle=max_cycle_instructions)
     
-    max_tab = np.ones((60,))*10
-    #max_tab[-1]  = 300
+    max_tab = np.ones((5*max_cycle_instructions//bandwidth_window_size,))
     weights = 1.0/max_tab
+    weights = None
     distance_method = DistanceMethod(distance_function,weights=weights)
 
     

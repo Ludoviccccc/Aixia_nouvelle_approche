@@ -56,7 +56,9 @@ if __name__=='__main__':
 
 
     #Simulation parameters
-    max_cycle = 60 #Maximum cycle in simulation
+    max_cycle = 60 #Maximum cycle in instructions
+    max_cycle_simulation = 120 #Maximum cycle in simulation
+    bandwidth_window_size = 20
    
  
     #IMGEP parameters
@@ -71,7 +73,7 @@ if __name__=='__main__':
 
 
     #Envionment class 
-    environment = Environment()
+    environment = Environment(max_cycle_simulation = max_cycle_simulation,bandwidth_window_size = bandwidth_window_size)
     
     addr_management = Address_Management(**simu_params)
 
@@ -97,21 +99,12 @@ if __name__=='__main__':
     if test_mode:
         g = lambda: addr_management(address_x=address_x) 
         p1 = g()
-        p2 = g()
-        print('p1', p1)
-        programs = [p1,p2]
-        mixture = mixing_method(programs)
-        #program = {'core0':p1,'core1':p2}
-        #print('p1',p1)
-        #print('p2',p2)
-        #output = environment(program)
+        output = environment(p1)
+        mutation  = mutation_method(p1)
+        #print('mutation len core 0', len(mutation['core0'].keys()))
+        #print('mutation len core 1', len(mutation['core1'].keys()))
         #results = environment.var.analyze_bandwidth_per_core()
-        #print(output)
-        print("mixture",mixture)
-        print('core 0 p1 len',len(p1['core0'].keys()))
-        print('core 1 p1 len',len(p1['core1'].keys()))
-        print('core0 len', len(mixture['core0'].keys()))
-        print('core1 len', len(mixture['core1'].keys()))
+        print(output)
     else:
         #Explorer for random exploration
         explorer_random = randomexploration(N_init,environment,lambda: addr_management.generate_instruction_sequence(address_x=address_x),history,print_freq=print_freq)

@@ -27,7 +27,7 @@ class MutationInstructions:
         self.max_instructions = max_instructions
 
 
-    def __call__(self,instructions,
+    def mutate(self,instructions,
         ):
         # Create a deep copy to avoid modifying the original
         mutated = copy.deepcopy(instructions)
@@ -92,3 +92,8 @@ class MutationInstructions:
             for k in to_del:
                 del mutated[k]
         return mutated
+    def __call__(self,program:dict):
+        output = {'core0':self.mutate(program['core1']),
+                'core1':self.mutate(program['core1'])
+                }
+        return output

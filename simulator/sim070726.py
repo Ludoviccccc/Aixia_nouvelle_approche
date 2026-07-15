@@ -25,6 +25,7 @@ class Var:
     def __init__(self,
             max_instructions:int=100,
             max_cycle:int=400,
+            bandwidth_window_size:int=10,
                       ):
 
         # In Var.__init__, add after the existing tracking structures:
@@ -33,7 +34,7 @@ class Var:
         self.ddr_commands = []  # List of (cycle, command_type, core_id, addr, bank, row)
         
         # Window configuration
-        self.bandwidth_window_size = 10  # Size of each window in cycles
+        self.bandwidth_window_size = bandwidth_window_size # Size of each window in cycles
         
         # Per-core bandwidth data - Organized by core_id
         self.bandwidth_data = {

@@ -12,25 +12,28 @@ class Environment:
             num_banks = 8,
             max_instructions:int=100,
             step:int=10,
-            max_cycle = 120,
+            max_cycle_simulation = 120,
+            bandwidth_window_size:int=10,
             ):
         self.num_banks = num_banks
         self.num_addr = max_address - min_address
         self.step = step
         self.max_instructions = max_instructions
-        self.max_cycle = max_cycle
+        self.max_cycle_simulation = max_cycle_simulation
+        self.bandwidth_window_size = bandwidth_window_size
     def run_experiment(self,program:dict):
         self.var = Var(max_instructions = self.max_instructions,
-                       max_cycle = self.max_cycle)
+                       max_cycle = self.max_cycle_simulation,
+                       bandwidth_window_size = self.bandwidth_window_size)
         experiment = Experiment(self.var,
                                 num_banks=self.num_banks,
                                 num_addr = self.num_addr)
         experiment.load_instr(core0_inst = program['core0'],core1_inst =program['core1'])
-        out = experiment.simulate(self.max_cycle)
+        out = experiment.simulate(self.max_cycle_simulation)
         
         
         results =  self.var.analyze_bandwidth_per_core()
-        make_empty_dict = lambda:{window:0 for window in range(self.max_cycle//self.var.bandwidth_window_size)}
+        make_empty_dict = lambda:{window:0 for window in range(self.max_cycle_simulation//self.var.bandwidth_window_size)}
         bandwidth_core0_bus = make_empty_dict() 
         bandwidth_core1_bus = make_empty_dict() 
         bandwidth_core0_ddr = make_empty_dict() 
