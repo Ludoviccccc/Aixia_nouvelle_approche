@@ -60,7 +60,7 @@ class Environment:
             #'cache_hit_l2':self.var.hits['L2'],
             #'cache_misses_l1':self.var.misses['L1'],
             'cache_misses_l2':self.var.misses['L2'],
-            #'time_core0':out['time_core0']
+            'time_core0':out['time_core0']
             }
         return obs
     def __call__(self,program:dict):
@@ -69,5 +69,13 @@ class Environment:
         output = {}
         output['bus_bandwidth_core_0_diff']={key:output_core0_core1['bus_bandwidth_core_0'][key]-output_core0_iso['bus_bandwidth_core_0'][key] for key in output_core0_core1['bus_bandwidth_core_0']}
         output['ddr_bandwidth_core_0_diff']={key:output_core0_core1['ddr_bandwidth_core_0'][key]-output_core0_iso['ddr_bandwidth_core_0'][key] for key in output_core0_core1['ddr_bandwidth_core_0']}
-        output['cache_misses_l2'] = {key:output_core0_core1['cache_misses_l2'][key] - output_core0_iso['cache_misses_l2'][key] for key in output_core0_core1['cache_misses_l2']}
+        output['cache_misses_l2_diff'] = {key:output_core0_core1['cache_misses_l2'][key] - output_core0_iso['cache_misses_l2'][key] for key in output_core0_core1['cache_misses_l2']}
+
+
+        output['bus_bandwidth_core_0_iso'] = output_core0_iso['bus_bandwidth_core_0']
+        output['bus_bandwidth_core_0_core1'] = output_core0_core1['bus_bandwidth_core_0']
+        output['ddr_bandwidth_core_0_iso'] = output_core0_iso['ddr_bandwidth_core_0']
+        output['ddr_bandwidth_core_0_core1'] = output_core0_core1['ddr_bandwidth_core_0']
+        output['time_core0_iso'] = output_core0_iso['time_core0']
+        output['time_core0_core1'] = output_core0_core1['time_core0']
         return output
