@@ -13,12 +13,10 @@ from utils.mix_interleaving import Mix_sequences_interleaved
 from utils.goal_generation import GoalGenerator
 from utils.imgep import run_imgep,Randomexploration
 from utils.env import Environment
-#from utils.representation import Representation
 
 from diversity.diversty import Diversity
 
 
-#import matplotlib.pyplot as plt
 def distance_function(goal,features,weights=None):
     x = goal
     v = x-features
@@ -58,19 +56,29 @@ if __name__=='__main__':
     step = 1
     folder = 'results'
 
+    unused=[
+        'bus_bandwidth_core_0_iso',
+        'bus_bandwidth_core_0_core1',
+        'ddr_bandwidth_core_0_iso',
+        'ddr_bandwidth_core_0_core1',
+        'time_core0_iso',
+        'time_core0_core1']
+
+
+
+
     #Envionment class 
     environment = Environment(step = step,num_banks=8,max_cycle_simulation = max_cycle_simulation,bandwidth_window_size = bandwidth_window_size,**simu_params)
     
     addr_management = Address_Management(max_cycle = max_cycle_instructions,**simu_params)
     code_generation_method = lambda: addr_management(address_x = address_x)
     #history, this class is used by the goal generator, explorer_random and explorer_imgep
-    history = History(capacity=capacity,unused=['time_core0'])
+    history = History(capacity=capacity,
+                        unused=unused,
+                            )
 
     representation = None
     periode_update_rep = None
-    #representation
-    #periode_update_rep = 1000
-    #representation = Representation(dim=10)
 
     #goal generation
     goalgenerator = GoalGenerator(history,representation)
@@ -80,8 +88,6 @@ if __name__=='__main__':
     mutation_method = MutationInstructions(num_mutations,**simu_params)
     mixing_method   = Mix_sequences_interleaved(max_cycle=max_cycle_instructions)
     
-    max_tab = np.ones((5*max_cycle_instructions//bandwidth_window_size,))
-    weights = 1.0/max_tab
     weights = None
     distance_method = DistanceMethod(distance_function,weights=weights)
 
@@ -103,7 +109,7 @@ if __name__=='__main__':
     history.save_pickle(f'{folder}/imgep_bandwidth_N_{N}_k_{k}')
 
 
-    history_rand = History(capacity=capacity,unused=['time_core0'])
+    history_rand = History(capacity=capacity,unused=unused)
     random_explorer = Randomexploration(N,environment,code_generation_method,history_rand)
     random_explorer()
     history_rand.save_pickle(f'{folder}/random_bandwidth_expl_N_{N}')
