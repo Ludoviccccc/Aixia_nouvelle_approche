@@ -50,6 +50,8 @@ class Address_Management:
                     address = address_x
                 else:
                     address = random.randint(self.min_address,self.max_address)
+            else:
+                address = random.randint(self.min_address,self.max_address)
             instr_type = random.choice(instruction_types)
             #instructions[cycle] = (instr_type, address)
             instructions[cycle] = (instr_type, address)

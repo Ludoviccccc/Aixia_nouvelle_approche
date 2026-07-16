@@ -64,4 +64,10 @@ class Environment:
             }
         return obs
     def __call__(self,program:dict):
-        return self.run_experiment(program)
+        output_core0_iso = self.run_experiment({'core0':program['core0'],'core1':[]})
+        output_core0_core1 = self.run_experiment(program)
+        output = {}
+        output['bus_bandwidth_core_0_diff']={key:output_core0_core1['bus_bandwidth_core_0'][key]-output_core0_iso['bus_bandwidth_core_0'][key] for key in output_core0_core1['bus_bandwidth_core_0']}
+        output['ddr_bandwidth_core_0_diff']={key:output_core0_core1['ddr_bandwidth_core_0'][key]-output_core0_iso['ddr_bandwidth_core_0'][key] for key in output_core0_core1['ddr_bandwidth_core_0']}
+        output['cache_misses_l2'] = {key:output_core0_core1['cache_misses_l2'][key] - output_core0_iso['cache_misses_l2'][key] for key in output_core0_core1['cache_misses_l2']}
+        return output
