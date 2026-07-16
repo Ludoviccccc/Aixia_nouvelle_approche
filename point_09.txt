@@ -24,3 +24,19 @@ Dire à Py que c'est important que j'aie un papier qui gravite dans les activit�
 
 AI for science communauté:
 Regarder pour une conférence.
+
+Mariem a ecrit pour
+
+Pour l'approche 1
+
+* Pousser l'analyse de l'approche Evaluation de la méthode UMAP pour les données discrètes
+	* Via l'essai sur des données multimodales discrètes: creation des données + essai de la méthode
+	
+Approche 2:
+* Mis de coté
+
+Approche 3:
+Ne pas présenter 
+
+
+
