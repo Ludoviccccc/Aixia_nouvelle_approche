@@ -61,6 +61,8 @@ if __name__=='__main__':
         'bus_bandwidth_core_0_core1',
         'ddr_bandwidth_core_0_iso',
         'ddr_bandwidth_core_0_core1',
+        'bus_bandwidth_core_0_diff',
+        'ddr_bandwidth_core_0_diff',
         'time_core0_iso',
         'time_core0_core1']
 

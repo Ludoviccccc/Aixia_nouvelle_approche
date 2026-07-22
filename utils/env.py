@@ -73,6 +73,16 @@ class Environment:
             'bus_bandwidth_core_1':bandwidth_core1_bus,
             'ddr_bandwidth_core_0':bandwidth_core0_ddr,
             'ddr_bandwidth_core_1':bandwidth_core1_ddr,
+
+            'bus_bandwidth_core_0_write':bandwidth_core0_bus_write,
+            'bus_bandwidth_core_1_write':bandwidth_core1_bus_write,
+            'ddr_bandwidth_core_0_write':bandwidth_core0_ddr_write,
+            'ddr_bandwidth_core_1_write':bandwidth_core1_ddr_write,
+
+            'bus_bandwidth_core_0_read':bandwidth_core0_bus_read,
+            'bus_bandwidth_core_1_read':bandwidth_core1_bus_read,
+            'ddr_bandwidth_core_0_read':bandwidth_core0_ddr_read,
+            'ddr_bandwidth_core_1_read':bandwidth_core1_ddr_read,
             #'cache_hit_l2':self.var.hits['L2'],
             #'cache_misses_l1':self.var.misses['L1'],
             'cache_misses_l2':self.var.misses['L2'],
@@ -88,10 +98,17 @@ class Environment:
         output['cache_misses_l2_diff'] = {key:output_core0_core1['cache_misses_l2'][key] - output_core0_iso['cache_misses_l2'][key] for key in output_core0_core1['cache_misses_l2']}
 
 
+        output['bus_bandwidth_core_0_read_diff']={key:output_core0_core1['bus_bandwidth_core_0_read'][key]-output_core0_iso['bus_bandwidth_core_0_read'][key] for key in output_core0_core1['bus_bandwidth_core_0_read']}
+        output['ddr_bandwidth_core_0_read_diff']={key:output_core0_core1['ddr_bandwidth_core_0_read'][key]-output_core0_iso['ddr_bandwidth_core_0_read'][key] for key in output_core0_core1['ddr_bandwidth_core_0_read']}
+        output['bus_bandwidth_core_0_write_diff']={key:output_core0_core1['bus_bandwidth_core_0_write'][key]-output_core0_iso['bus_bandwidth_core_0_write'][key] for key in output_core0_core1['bus_bandwidth_core_0_write']}
+        output['ddr_bandwidth_core_0_write_diff']={key:output_core0_core1['ddr_bandwidth_core_0_write'][key]-output_core0_iso['ddr_bandwidth_core_0_write'][key] for key in output_core0_core1['ddr_bandwidth_core_0_write']}
+
+
         output['bus_bandwidth_core_0_iso'] = output_core0_iso['bus_bandwidth_core_0']
         output['bus_bandwidth_core_0_core1'] = output_core0_core1['bus_bandwidth_core_0']
         output['ddr_bandwidth_core_0_iso'] = output_core0_iso['ddr_bandwidth_core_0']
         output['ddr_bandwidth_core_0_core1'] = output_core0_core1['ddr_bandwidth_core_0']
+
         output['time_core0_iso'] = output_core0_iso['time_core0']
         output['time_core0_core1'] = output_core0_core1['time_core0']
         return output
