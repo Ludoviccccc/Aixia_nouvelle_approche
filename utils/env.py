@@ -38,18 +38,34 @@ class Environment:
         bandwidth_core1_bus = make_empty_dict() 
         bandwidth_core0_ddr = make_empty_dict() 
         bandwidth_core1_ddr = make_empty_dict() 
+
+        bandwidth_core0_bus_read = make_empty_dict() 
+        bandwidth_core1_bus_read = make_empty_dict() 
+        bandwidth_core0_ddr_read = make_empty_dict() 
+        bandwidth_core1_ddr_read = make_empty_dict() 
+
+        bandwidth_core0_bus_write = make_empty_dict() 
+        bandwidth_core1_bus_write = make_empty_dict() 
+        bandwidth_core0_ddr_write = make_empty_dict() 
+        bandwidth_core1_ddr_write = make_empty_dict() 
         if 0 in results['cores']:
             for id_ in results['cores'][0]['bus']['windows']:
                 bandwidth_core0_bus[id_] = results['cores'][0]['bus']['windows'][id_]['total_commands']
-        if 0 in results['cores']:
+                bandwidth_core0_bus_write[id_] = results['cores'][0]['bus']['windows'][id_]['write_commands']
+                bandwidth_core0_bus_read[id_] = results['cores'][0]['bus']['windows'][id_]['read_commands']
             for id_ in results['cores'][0]['ddr']['windows']:
                 bandwidth_core0_ddr[id_] = results['cores'][0]['ddr']['windows'][id_]['total_commands']
+                bandwidth_core0_ddr_write[id_] = results['cores'][0]['ddr']['windows'][id_]['write_commands']
+                bandwidth_core0_ddr_read[id_] = results['cores'][0]['ddr']['windows'][id_]['read_commands']
         if 1 in results['cores']:
             for id_ in results['cores'][1]['bus']['windows']:
                 bandwidth_core1_bus[id_] = results['cores'][1]['bus']['windows'][id_]['total_commands']
-        if 1 in results['cores']:
+                bandwidth_core1_bus_write[id_] = results['cores'][1]['bus']['windows'][id_]['write_commands']
+                bandwidth_core1_bus_read[id_] = results['cores'][1]['bus']['windows'][id_]['read_commands']
             for id_ in results['cores'][1]['ddr']['windows']:
                 bandwidth_core1_ddr[id_] = results['cores'][1]['ddr']['windows'][id_]['total_commands']
+                bandwidth_core1_ddr_write[id_] = results['cores'][1]['ddr']['windows'][id_]['write_commands']
+                bandwidth_core1_ddr_read[id_] = results['cores'][1]['ddr']['windows'][id_]['read_commands']
 
         obs = {
             #'cache_hit_l1':self.var.hits['L1'],
