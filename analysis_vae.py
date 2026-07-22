@@ -10,7 +10,7 @@ from utils.representation2 import VAE,vae_training
 
 
 folder = "results"
-N = 10000
+N = 100000
 k=1
 address_x = 5
 max_cycle_simulat = 120
@@ -25,8 +25,15 @@ content_random_tab = content_random['numpy_view']
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-vae = VAE(content_imgep_tab.shape[1],5).to(device)
+
+feature_list = ['bus_bandwidth_core_0_diff', 'ddr_bandwidth_core_0_diff', 'cache_misses_l2_diff', 'bus_bandwidth_core_0_iso', 'bus_bandwidth_core_0_core1', 'ddr_bandwidth_core_0_iso', 'ddr_bandwidth_core_0_core1']
+content_array_time  = np.array([[[content_imgep['memory_observation'][feature][n][t] for feature in feature_list] for t in range(6)] for n in range(N)])
+print(content_array_time.shape)
+data = content_array_time.reshape((-1,len(feature_list)))
+norm = lambda data: (data - data.mean(axis=0))/data.std(axis=0)
+data = torch.Tensor(norm(data)).to(device)
 print('device', device)
-dataset = torch.Tensor(content_imgep_tab).to(device)
-dataset = (dataset - dataset.mean(dim=0))/dataset.var(dim=0)
-vae_training(dataset,vae,n_epochs=10000,lr=1e-5)
+#dataset = torch.Tensor(content_imgep_tab).to(device)
+#dataset = (dataset - dataset.mean(dim=0))/dataset.var(dim=0)
+vae = VAE(data.shape[1],5).to(device)
+vae_training(data,vae,n_epochs=10000,lr=1e-5)
