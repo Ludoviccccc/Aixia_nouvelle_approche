@@ -195,169 +195,6 @@ class Var:
         
         return result
     
-    def print_bandwidth_report_per_core(self):
-        """Print a formatted bandwidth report per core"""
-        analysis = self.analyze_bandwidth_per_core()
-        
-        print("\n" + "="*80)
-        print("PER-CORE BUS AND DDR EFFECTIVE COMMAND BANDWIDTH REPORT")
-        print("="*80)
-        
-        print(f"\nWindow Size: {self.bandwidth_window_size} cycles")
-        print(f"Total Simulation Cycles: {analysis['overall']['total_cycles']}")
-        print(f"Total Windows: {analysis['overall']['total_windows']}")
-        print(f"Active Cores: {analysis['overall']['active_cores']}")
-        
-        # For each core, print detailed statistics
-        for core_id in sorted(analysis['cores'].keys()):
-            core_data = analysis['cores'][core_id]
-            core_contrib = analysis['summary']['bus']['core_contributions'][core_id]
-            
-            print("\n" + "="*60)
-            print(f"CORE {core_id} BANDWIDTH STATISTICS")
-            print("="*60)
-            
-            # Bus statistics
-            print(f"\n📊 BUS COMMANDS (Core {core_id}):")
-            print("-"*50)
-            if core_data['bus']['windows']:
-                print(f"{'Window':<10} {'Cycle Range':<15} {'Total':<10} {'Read':<10} {'Write':<10} {'Rate/cycle':<15}")
-                print("-"*50)
-                for window_idx, data in sorted(core_data['bus']['windows'].items()):
-                    print(f"{window_idx:<10} {data['cycle_range']:<15} {data['total_commands']:<10} {data['read_commands']:<10} {data['write_commands']:<10} {data['commands_per_cycle']:<15.2f}")
-                print("-"*50)
-                print(f"Summary for Core {core_id}:")
-                print(f"  Total Bus Commands: {core_data['bus']['summary']['total_commands']}")
-                print(f"  Avg per Window: {core_data['bus']['summary']['avg_commands_per_window']:.2f}")
-                print(f"  Max per Window: {core_data['bus']['summary']['max_commands_per_window']}")
-                print(f"  Min per Window: {core_data['bus']['summary']['min_commands_per_window']}")
-                print(f"  Avg Rate: {core_data['bus']['summary']['avg_rate']:.2f} commands/cycle")
-                print(f"  Share of Bus Traffic: {core_contrib['bus_percentage']:.1f}%")
-            else:
-                print("  No bus commands for this core")
-            
-            # DDR statistics
-            print(f"\n💾 DDR COMMANDS (Core {core_id}):")
-            print("-"*50)
-            if core_data['ddr']['windows']:
-                print(f"{'Window':<10} {'Cycle Range':<15} {'Total':<10} {'Read':<10} {'Write':<10} {'Rate/cycle':<15}")
-                print("-"*50)
-                for window_idx, data in sorted(core_data['ddr']['windows'].items()):
-                    print(f"{window_idx:<10} {data['cycle_range']:<15} {data['total_commands']:<10} {data['read_commands']:<10} {data['write_commands']:<10} {data['commands_per_cycle']:<15.2f}")
-                print("-"*50)
-                print(f"Summary for Core {core_id}:")
-                print(f"  Total DDR Commands: {core_data['ddr']['summary']['total_commands']}")
-                print(f"  Avg per Window: {core_data['ddr']['summary']['avg_commands_per_window']:.2f}")
-                print(f"  Max per Window: {core_data['ddr']['summary']['max_commands_per_window']}")
-                print(f"  Min per Window: {core_data['ddr']['summary']['min_commands_per_window']}")
-                print(f"  Avg Rate: {core_data['ddr']['summary']['avg_rate']:.2f} commands/cycle")
-                print(f"  Share of DDR Traffic: {core_contrib['ddr_percentage']:.1f}%")
-            else:
-                print("  No DDR commands for this core")
-            
-            # Calculate bus vs DDR ratio for this core
-            if core_data['bus']['summary'].get('total_commands', 0) > 0 and core_data['ddr']['summary'].get('total_commands', 0) > 0:
-                ratio = core_data['bus']['summary']['total_commands'] / core_data['ddr']['summary']['total_commands']
-                print(f"\n📈 Bus to DDR Ratio: {ratio:.2f} (Bus: {core_data['bus']['summary']['total_commands']}, DDR: {core_data['ddr']['summary']['total_commands']})")
-        
-        # Overall system summary
-        print("\n" + "="*60)
-        print("SYSTEM-WIDE SUMMARY")
-        print("="*60)
-        print(f"\nTotal Bus Commands: {analysis['summary']['bus']['total_commands']}")
-        print(f"Total DDR Commands: {analysis['summary']['ddr']['total_commands']}")
-        print(f"System Bus Rate: {analysis['summary']['bus']['avg_rate']:.2f} commands/cycle")
-        print(f"System DDR Rate: {analysis['summary']['ddr']['avg_rate']:.2f} commands/cycle")
-        
-        # Core traffic distribution
-        print("\n📊 CORE TRAFFIC DISTRIBUTION:")
-        print("-"*50)
-        print(f"{'Core':<10} {'Bus %':<10} {'DDR %':<10}")
-        print("-"*50)
-        for core_id in sorted(analysis['summary']['bus']['core_contributions'].keys()):
-            contrib = analysis['summary']['bus']['core_contributions'][core_id]
-            print(f"{core_id:<10} {contrib['bus_percentage']:<10.1f}% {contrib['ddr_percentage']:<10.1f}%")
-        
-        print("\n" + "="*80)
-        
-        return analysis
-    
-    def export_bandwidth_per_core_to_csv(self, filename="bandwidth_per_core_report.csv"):
-        """Export per-core bandwidth data to CSV file for further analysis"""
-        import csv
-        
-        analysis = self.analyze_bandwidth_per_core()
-        
-        with open(filename, 'w', newline='') as csvfile:
-            writer = csv.writer(csvfile)
-            
-            # Write header with core information
-            writer.writerow(['Core', 'Type', 'Window', 'Cycle_Start', 'Cycle_End', 
-                            'Total_Commands', 'Read_Commands', 'Write_Commands', 
-                            'Rate_per_Cycle', 'Read_Rate', 'Write_Rate'])
-            
-            # Write data for each core
-            for core_id in sorted(analysis['cores'].keys()):
-                core_data = analysis['cores'][core_id]
-                
-                # Write bus data
-                for window_idx, data in sorted(core_data['bus']['windows'].items()):
-                    start, end = data['cycle_range'].split('-')
-                    writer.writerow([core_id, 'BUS', window_idx, start, end, 
-                                   data['total_commands'], data['read_commands'], 
-                                   data['write_commands'], 
-                                   f"{data['commands_per_cycle']:.4f}",
-                                   f"{data['read_rate']:.4f}",
-                                   f"{data['write_rate']:.4f}"])
-                
-                # Write DDR data
-                for window_idx, data in sorted(core_data['ddr']['windows'].items()):
-                    start, end = data['cycle_range'].split('-')
-                    writer.writerow([core_id, 'DDR', window_idx, start, end, 
-                                   data['total_commands'], data['read_commands'], 
-                                   data['write_commands'], 
-                                   f"{data['commands_per_cycle']:.4f}",
-                                   f"{data['read_rate']:.4f}",
-                                   f"{data['write_rate']:.4f}"])
-        
-        print(f"\n📊 Per-core bandwidth data exported to {filename}")
-    
-    def export_core_comparison_summary(self, filename="core_bandwidth_comparison.csv"):
-        """Export a summary comparing bandwidth between cores"""
-        import csv
-        
-        analysis = self.analyze_bandwidth_per_core()
-        
-        with open(filename, 'w', newline='') as csvfile:
-            writer = csv.writer(csvfile)
-            
-            # Write header
-            writer.writerow(['Core', 'Bus_Total', 'Bus_Avg_Rate', 'Bus_Max_Window', 
-                            'DDR_Total', 'DDR_Avg_Rate', 'DDR_Max_Window',
-                            'Bus_Share_%', 'DDR_Share_%', 'Bus_DDR_Ratio'])
-            
-            # Write data for each core
-            for core_id in sorted(analysis['cores'].keys()):
-                core_data = analysis['cores'][core_id]
-                contrib = analysis['summary']['bus']['core_contributions'][core_id]
-                
-                bus_total = core_data['bus']['summary'].get('total_commands', 0)
-                bus_avg = core_data['bus']['summary'].get('avg_rate', 0)
-                bus_max = core_data['bus']['summary'].get('max_commands_per_window', 0)
-                
-                ddr_total = core_data['ddr']['summary'].get('total_commands', 0)
-                ddr_avg = core_data['ddr']['summary'].get('avg_rate', 0)
-                ddr_max = core_data['ddr']['summary'].get('max_commands_per_window', 0)
-                
-                ratio = bus_total / ddr_total if ddr_total > 0 else float('inf')
-                
-                writer.writerow([core_id, bus_total, f"{bus_avg:.4f}", bus_max,
-                               ddr_total, f"{ddr_avg:.4f}", ddr_max,
-                               f"{contrib['bus_percentage']:.1f}", 
-                               f"{contrib['ddr_percentage']:.1f}",
-                               f"{ratio:.2f}" if ratio != float('inf') else "N/A"])
-        
-        print(f"\n📊 Core comparison summary exported to {filename}")
 
     def _ensure_core_tracking(self, core_id):
         """Ensure tracking structures exist for a given core"""
@@ -661,66 +498,7 @@ class Var:
             is_writeback=(operation == 'write')
         )
     
-    def get_instruction_sequences_formatted(self):
-        """Return formatted instruction sequences as described in prompt2.txt"""
-        formatted_output = []
-        
-        for seq in self.instruction_sequences:
-            output_lines = []
-            output_lines.append(f"\n--- Instruction {seq['instr_id']} (Cycle {seq['cycle_start']}-{seq['cycle_end']}) ---")
-            output_lines.append(f"Core {seq['core_id']}: {seq['operation'].upper()} @ {hex(seq['address'])}")
-            output_lines.append("")
-            
-            step_count = 1
-            for step in seq['steps']:
-                if "HIT" in step['step_type']:
-                    if "WRITE" in str(step['details'].get('operation', '')):
-                        output_lines.append(f"{step_count}. CPU => Cache {step['level']} (write hit) => update cache line => mark dirty")
-                        output_lines.append(f"   (No lower-level memory access)")
-                    else:
-                        output_lines.append(f"{step_count}. CPU => Cache {step['level']} (read hit) => return data")
-                        output_lines.append(f"   (No lower-level memory access)")
-                
-                elif "MISS" in step['step_type']:
-                    if "WRITE" in str(step['details'].get('operation', '')):
-                        output_lines.append(f"{step_count}. CPU => Cache {step['level']} (write miss)")
-                    else:
-                        output_lines.append(f"{step_count}. CPU => Cache {step['level']} (read miss)")
-                
-                elif "EVICTION" in step['step_type']:
-                    if step['details'].get('dirty', False):
-                        output_lines.append(f"{step_count}.   Evict dirty line at {hex(step['details']['evicted_addr'])} => needs write-back")
-                    else:
-                        output_lines.append(f"{step_count}.   Evict clean line at {hex(step['details']['evicted_addr'])}")
-                
-                elif "WRITEBACK" in step['step_type']:
-                    output_lines.append(f"{step_count}.   Write-back to lower-level memory ({step['details']['operation']} @ {hex(step['details']['addr'])})")
-                
-                elif "TO_" in step['step_type']:
-                    if step['details']['operation'] == 'read':
-                        output_lines.append(f"{step_count}.   Fetch line from {step['details']['target']} ({step['details']['operation']} @ {hex(step['details']['addr'])})")
-                    else:
-                        output_lines.append(f"{step_count}.   Write line to {step['details']['target']} ({step['details']['operation']} @ {hex(step['details']['addr'])})")
-                
-                step_count += 1
-            
-            # Add final return step
-            if seq['operation'] == 'read':
-                output_lines.append(f"{step_count}. Return data to CPU")
-            else:
-                if seq['steps'] and any("HIT" in s['step_type'] for s in seq['steps']):
-                    output_lines.append(f"{step_count}. (Write complete)")
-                else:
-                    output_lines.append(f"{step_count}. Write complete, line marked dirty")
-            
-            #output_lines.append(f"\nTotal cycles: {seq['total_cycles']}")
-            formatted_output.append("\n".join(output_lines))
-        
-        return "\n".join(formatted_output)
     
-    def print_instruction_sequences(self):
-        """Print all instruction sequences"""
-        print(self.get_instruction_sequences_formatted())
     
     def clear_history(self):
         self.global_cycle = 0
@@ -730,76 +508,29 @@ class Var:
             self.memory_access_sequences = []
         if hasattr(self, 'lower_level_accesses'):
             self.lower_level_accesses = []
-    def export_sequences_to_file(self, filename="instruction_sequences.txt"):
-        """Export instruction sequences to a text file"""
-        with open(filename, 'w') as f:
-            f.write("=" * 80 + "\n")
-            f.write("MEMORY ACCESS SEQUENCES\n")
-            f.write("=" * 80 + "\n")
-            f.write(self.get_instruction_sequences_formatted())
-            f.write("\n" + "=" * 80 + "\n")
-            f.write("\nSUMMARY BY ACCESS TYPE\n")
-            f.write("=" * 80 + "\n")
-
-            # Count different types of accesses
-            read_hits = 0
-            read_misses = 0
-            write_hits = 0
-            write_misses = 0
-            dirty_evictions = 0
-            clean_evictions = 0
-
-            for seq in self.instruction_sequences:
-                if seq['operation'] == 'read':
-                    has_hit = any("HIT" in s['step_type'] for s in seq['steps'])
-                    if has_hit:
-                        read_hits += 1
-                    else:
-                        read_misses += 1
-                else:  # write
-                    has_hit = any("HIT" in s['step_type'] for s in seq['steps'])
-                    if has_hit:
-                        write_hits += 1
-                    else:
-                        write_misses += 1
-
-                # Count evictions
-                for step in seq['steps']:
-                    if "EVICTION" in step['step_type'] and step['details'].get('dirty', False):
-                        dirty_evictions += 1
-                    elif "EVICTION" in step['step_type']:
-                        clean_evictions += 1
-
-            f.write(f"\nRead Hits: {read_hits}")
-            f.write(f"\nRead Misses: {read_misses}")
-            f.write(f"\nWrite Hits: {write_hits}")
-            f.write(f"\nWrite Misses: {write_misses}")
-            f.write(f"\nDirty Evictions: {dirty_evictions}")
-            f.write(f"\nClean Evictions: {clean_evictions}")
-            f.write(f"\nTotal Instructions: {len(self.instruction_sequences)}")
-        def clear_bandwidth_history(self):
-            """Clear bandwidth tracking data"""
-            self.bus_commands = []
-            self.ddr_commands = []
-            self.bandwidth_data = {
-                'bus': {},
-                'ddr': {}
-            }
-            self.command_stats = {
-                'bus': {},
-                'ddr': {}
-            }
-            self.active_cores = set()
-
-        def clear_history(self):
-            self.global_cycle = 0
-            self.shared_resource_events = []
-            self.instruction_sequences = []
-            if hasattr(self, 'memory_access_sequences'):
-                self.memory_access_sequences = []
-            if hasattr(self, 'lower_level_accesses'):
-                self.lower_level_accesses = []
-            self.clear_bandwidth_history()
+    def clear_bandwidth_history(self):
+        """Clear bandwidth tracking data"""
+        self.bus_commands = []
+        self.ddr_commands = []
+        self.bandwidth_data = {
+            'bus': {},
+            'ddr': {}
+        }
+        self.command_stats = {
+            'bus': {},
+            'ddr': {}
+        }
+        self.active_cores = set()
+    
+    def clear_history(self):
+        self.global_cycle = 0
+        self.shared_resource_events = []
+        self.instruction_sequences = []
+        if hasattr(self, 'memory_access_sequences'):
+            self.memory_access_sequences = []
+        if hasattr(self, 'lower_level_accesses'):
+            self.lower_level_accesses = []
+        self.clear_bandwidth_history()
 
 
 # CacheLine: Represents a single cache line in the cache hierarchy
