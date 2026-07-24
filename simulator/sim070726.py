@@ -53,7 +53,7 @@ class Var:
 
 
         self.global_cycle = 0
-        # New: Track shared resource contention
+        # Track shared resource contention
         self.shared_resource_events = []
         self.max_instructions = max_instructions
         self.max_cycle = max_cycle
@@ -1397,18 +1397,3 @@ class Core:
                         self.enqueue_access('read', addr,id_)
                         self.read(addr, lambda addr=addr: self.dequeue_access('read', addr),id_=id_)
                         return self.vars.global_cycle
-
-# Example usage after simulation:
-def print_contention_analysis():
-    """Print detailed analysis of shared resource contention"""
-    analysis = analyze_shared_resource_contention()
-
-    print("\n=== SHARED RESOURCE CONTENTION ANALYSIS ===")
-    print(f"Total contention events: {analysis['total_contention_events']}")
-    print(f"DDR memory contention cycles: {len(analysis['ddr_contention_cycles'])}")
-
-    print("\n=== DETAILED CONTENTION EVENTS ===")
-    for event in GlobalVar.shared_resource_events:
-        print(f"Cycle {event['cycle']}: {event['type']}")
-        print(f"  Cores involved: {event['initiators']}")
-        print(f"  Details: {event['details']}")
