@@ -28,19 +28,8 @@ class Var:
             bandwidth_window_size:int=10,
                       ):
 
-        # In Var.__init__, add after the existing tracking structures:
-        # Per-core bandwidth tracking structures
-        self.bus_commands = []  # List of (cycle, command_type, core_id, addr)
-        self.ddr_commands = []  # List of (cycle, command_type, core_id, addr, bank, row)
-        
         # Window configuration
         self.bandwidth_window_size = bandwidth_window_size # Size of each window in cycles
-        
-        # Per-core bandwidth data - Organized by core_id
-        self.bandwidth_data = {
-            'bus': {},    # core_id -> {window_idx -> {'total': count, 'read': count, 'write': count}}
-            'ddr': {}     # core_id -> {window_idx -> {'total': count, 'read': count, 'write': count}}
-        }
         
         # Per-core command statistics
         self.command_stats = {
@@ -50,11 +39,10 @@ class Var:
         
         # Track which cores are active
         self.active_cores = set()
-
-
+        
+        
         self.global_cycle = 0
         # Track shared resource contention
-        self.shared_resource_events = []
         self.max_instructions = max_instructions
         self.max_cycle = max_cycle
         self.access_ddr = {
@@ -76,125 +64,245 @@ class Var:
         # NEW: Detailed instruction sequence tracking
         self.instruction_sequences = []  # List of instruction execution records
         self.current_instruction_id = None
-    def analyze_bandwidth_per_core(self):
-        """Analyze and return bandwidth statistics per core"""
-        result = {
-            'cores': {},
-            'summary': {},
-            'overall': {}
+        # In Var.__init__, add after the existing tracking structures:
+        
+        
+        # Cache interference tracking
+        # Tracks when a cache line is evicted due to another core's access
+        self.cache_interferences = {
+            'L1': [],  # List of interference events
+            'L2': []   # List of interference events
         }
         
-        # Process each core's data
-        for core_id in self.active_cores:
-            core_result = {
-                'bus': {
-                    'windows': {},
-                    'summary': {}
-                },
-                'ddr': {
-                    'windows': {},
-                    'summary': {}
-                }
-            }
-            
-            # Process bus data for this core
-            if core_id in self.bandwidth_data['bus']:
-                for window_idx, data in self.bandwidth_data['bus'][core_id].items():
-                    window_start = window_idx * self.bandwidth_window_size
-                    window_end = window_start + self.bandwidth_window_size - 1
-                    
-                    total_rate = data['total'] / self.bandwidth_window_size
-                    read_rate = data['read'] / self.bandwidth_window_size
-                    write_rate = data['write'] / self.bandwidth_window_size
-                    
-                    core_result['bus']['windows'][window_idx] = {
-                        'cycle_range': f"{window_start}-{window_end}",
-                        'total_commands': data['total'],
-                        'read_commands': data['read'],
-                        'write_commands': data['write'],
-                        'commands_per_cycle': total_rate,
-                        'read_rate': read_rate,
-                        'write_rate': write_rate
-                    }
-                
-                # Calculate bus summary for this core
-                if core_result['bus']['windows']:
-                    bus_totals = [w['total_commands'] for w in core_result['bus']['windows'].values()]
-                    core_result['bus']['summary'] = {
-                        'avg_commands_per_window': np.mean(bus_totals),
-                        'max_commands_per_window': max(bus_totals),
-                        'min_commands_per_window': min(bus_totals),
-                        'total_commands': sum(bus_totals),
-                        'avg_rate': sum(bus_totals) / (self.global_cycle / self.bandwidth_window_size) if self.global_cycle > 0 else 0
-                    }
-            
-            # Process DDR data for this core
-            if core_id in self.bandwidth_data['ddr']:
-                for window_idx, data in self.bandwidth_data['ddr'][core_id].items():
-                    window_start = window_idx * self.bandwidth_window_size
-                    window_end = window_start + self.bandwidth_window_size - 1
-                    
-                    total_rate = data['total'] / self.bandwidth_window_size
-                    read_rate = data['read'] / self.bandwidth_window_size
-                    write_rate = data['write'] / self.bandwidth_window_size
-                    
-                    core_result['ddr']['windows'][window_idx] = {
-                        'cycle_range': f"{window_start}-{window_end}",
-                        'total_commands': data['total'],
-                        'read_commands': data['read'],
-                        'write_commands': data['write'],
-                        'commands_per_cycle': total_rate,
-                        'read_rate': read_rate,
-                        'write_rate': write_rate
-                    }
-                
-                # Calculate DDR summary for this core
-                if core_result['ddr']['windows']:
-                    ddr_totals = [w['total_commands'] for w in core_result['ddr']['windows'].values()]
-                    core_result['ddr']['summary'] = {
-                        'avg_commands_per_window': np.mean(ddr_totals),
-                        'max_commands_per_window': max(ddr_totals),
-                        'min_commands_per_window': min(ddr_totals),
-                        'total_commands': sum(ddr_totals),
-                        'avg_rate': sum(ddr_totals) / (self.global_cycle / self.bandwidth_window_size) if self.global_cycle > 0 else 0
-                    }
-            
-            result['cores'][core_id] = core_result
+        # Bus contention tracking
+        # Tracks when requests are delayed due to bus bandwidth limitations
+        self.bus_contention_events = []  # List of contention events
         
-        # Calculate overall summary
-        total_bus_commands = sum(core_result['bus']['summary'].get('total_commands', 0) for core_result in result['cores'].values())
-        total_ddr_commands = sum(core_result['ddr']['summary'].get('total_commands', 0) for core_result in result['cores'].values())
+        # DDR bank conflicts
+        # Tracks when requests are delayed due to bank conflicts
+        self.ddr_bank_conflicts = []  # List of conflict events
         
-        # Calculate per-core contribution percentages
-        core_contributions = {}
-        for core_id, core_result in result['cores'].items():
-            core_contributions[core_id] = {
-                'bus_percentage': (core_result['bus']['summary'].get('total_commands', 0) / total_bus_commands * 100) if total_bus_commands > 0 else 0,
-                'ddr_percentage': (core_result['ddr']['summary'].get('total_commands', 0) / total_ddr_commands * 100) if total_ddr_commands > 0 else 0
-            }
+        # DDR scheduler interference
+        # Tracks when requests are delayed due to higher priority requests
+        self.ddr_scheduler_interference = []  # List of scheduler delay events
         
-        result['summary'] = {
-            'bus': {
-                'total_commands': total_bus_commands,
-                'avg_rate': total_bus_commands / self.global_cycle if self.global_cycle > 0 else 0,
-                'core_contributions': core_contributions
-            },
-            'ddr': {
-                'total_commands': total_ddr_commands,
-                'avg_rate': total_ddr_commands / self.global_cycle if self.global_cycle > 0 else 0,
-                'core_contributions': core_contributions
-            }
+        # Cross-core eviction tracking
+        # Maps (level, set_index, tag) -> (core_id, cycle, instruction_id)
+        self.cache_occupancy = {
+            'L1': {},  # (set_index, tag) -> {'core_id': core_id, 'cycle': cycle, 'instr_id': instr_id}
+            'L2': {}   # (set_index, tag) -> {'core_id': core_id, 'cycle': cycle, 'instr_id': instr_id}
         }
         
-        result['overall'] = {
-            'total_cycles': self.global_cycle,
-            'total_windows': self.global_cycle // self.bandwidth_window_size,
-            'num_cores': len(self.active_cores),
-            'active_cores': sorted(list(self.active_cores))
+        # Interference statistics summary
+        self.interference_stats = {
+            'cache_interferences': {'L1': 0, 'L2': 0},
+            'bus_contention': 0,
+            'ddr_bank_conflicts': 0,
+            'ddr_scheduler_interference': 0,
+            'total_interference_events': 0
         }
         
-        return result
+        # Per-core interference counts
+        self.per_core_interference = {}  # core_id -> {'caused': count, 'suffered': count}
+        # Per-core bandwidth tracking structures
+        self.bus_commands = []  # List of (cycle, command_type, core_id, addr)
+        self.ddr_commands = []  # List of (cycle, command_type, core_id, addr, bank, row)
+
+
+    def _ensure_core_interference_tracking(self, core_id):
+        """Ensure per-core interference tracking exists"""
+        if core_id not in self.per_core_interference:
+            self.per_core_interference[core_id] = {
+                'caused': 0,
+                'suffered': 0,
+                'cache_evictions_caused': {'L1': 0, 'L2': 0},
+                'cache_evictions_suffered': {'L1': 0, 'L2': 0},
+                'bus_delays_caused': 0,
+                'bus_delays_suffered': 0,
+                'ddr_conflicts_caused': 0,
+                'ddr_conflicts_suffered': 0
+            }
     
+    def log_cache_interference(self, level, set_idx, tag, evicted_core_id, evicted_instr_id, 
+                               causing_core_id, causing_instr_id, evicted_addr, causing_addr):
+        """
+        Log a cache interference event where one core's access evicts another core's cache line
+        
+        Args:
+            level: 'L1' or 'L2'
+            set_idx: The set index where eviction occurred
+            tag: The tag of the evicted line
+            evicted_core_id: Core that owned the evicted line
+            evicted_instr_id: Instruction that placed the evicted line
+            causing_core_id: Core causing the eviction
+            causing_instr_id: Instruction causing the eviction
+            evicted_addr: Address of evicted line
+            causing_addr: Address causing the eviction
+        """
+        event = {
+            'cycle': self.global_cycle,
+            'level': level,
+            'set_idx': set_idx,
+            'tag': tag,
+            'evicted_core_id': evicted_core_id,
+            'evicted_instr_id': evicted_instr_id,
+            'evicted_addr': evicted_addr,
+            'causing_core_id': causing_core_id,
+            'causing_instr_id': causing_instr_id,
+            'causing_addr': causing_addr,
+            'type': 'eviction_interference'
+        }
+        
+        self.cache_interferences[level].append(event)
+        self.interference_stats['cache_interferences'][level] += 1
+        self.interference_stats['total_interference_events'] += 1
+        
+        # Update per-core statistics
+        self._ensure_core_interference_tracking(evicted_core_id)
+        self._ensure_core_interference_tracking(causing_core_id)
+        
+        self.per_core_interference[evicted_core_id]['suffered'] += 1
+        self.per_core_interference[evicted_core_id]['cache_evictions_suffered'][level] += 1
+        self.per_core_interference[causing_core_id]['caused'] += 1
+        self.per_core_interference[causing_core_id]['cache_evictions_caused'][level] += 1
+    
+    def log_bus_contention(self, core_id, req_type, addr, scheduled_delay, 
+                           original_delay, competing_requests):
+        """
+        Log a bus contention event where a request is delayed due to bus bandwidth
+        
+        Args:
+            core_id: Core making the request
+            req_type: 'read' or 'write'
+            addr: Memory address
+            scheduled_delay: Actual delay experienced
+            original_delay: Delay without contention
+            competing_requests: Number of competing requests
+        """
+        event = {
+            'cycle': self.global_cycle,
+            'core_id': core_id,
+            'req_type': req_type,
+            'addr': addr,
+            'scheduled_delay': scheduled_delay,
+            'original_delay': original_delay,
+            'extra_delay': scheduled_delay - original_delay,
+            'competing_requests': competing_requests,
+            'type': 'bus_contention'
+        }
+        
+        self.bus_contention_events.append(event)
+        self.interference_stats['bus_contention'] += 1
+        self.interference_stats['total_interference_events'] += 1
+        
+        # Update per-core statistics
+        self._ensure_core_interference_tracking(core_id)
+        self.per_core_interference[core_id]['suffered'] += 1
+        self.per_core_interference[core_id]['bus_delays_suffered'] += 1
+    
+    def log_ddr_bank_conflict(self, core_id, bank, row, addr, req_type, 
+                              scheduled_delay, original_delay, conflict_core_id):
+        """
+        Log a DDR bank conflict where multiple cores access the same bank
+        
+        Args:
+            core_id: Core making the request
+            bank: Bank being accessed
+            row: Row being accessed
+            addr: Memory address
+            req_type: 'read' or 'write'
+            scheduled_delay: Actual delay experienced
+            original_delay: Delay without conflict
+            conflict_core_id: Core causing the conflict
+        """
+        event = {
+            'cycle': self.global_cycle,
+            'core_id': core_id,
+            'bank': bank,
+            'row': row,
+            'addr': addr,
+            'req_type': req_type,
+            'scheduled_delay': scheduled_delay,
+            'original_delay': original_delay,
+            'extra_delay': scheduled_delay - original_delay,
+            'conflict_core_id': conflict_core_id,
+            'type': 'ddr_bank_conflict'
+        }
+        
+        self.ddr_bank_conflicts.append(event)
+        self.interference_stats['ddr_bank_conflicts'] += 1
+        self.interference_stats['total_interference_events'] += 1
+        
+        # Update per-core statistics
+        self._ensure_core_interference_tracking(core_id)
+        self._ensure_core_interference_tracking(conflict_core_id)
+        
+        self.per_core_interference[core_id]['suffered'] += 1
+        self.per_core_interference[core_id]['ddr_conflicts_suffered'] += 1
+        self.per_core_interference[conflict_core_id]['caused'] += 1
+        self.per_core_interference[conflict_core_id]['ddr_conflicts_caused'] += 1
+    
+    def log_ddr_scheduler_interference(self, core_id, bank, addr, req_type,
+                                       scheduled_delay, original_delay,
+                                       priority_difference, higher_priority_requests):
+        """
+        Log DDR scheduler interference where a request is delayed due to higher priority requests
+        
+        Args:
+            core_id: Core making the request
+            bank: Bank being accessed
+            addr: Memory address
+            req_type: 'read' or 'write'
+            scheduled_delay: Actual delay experienced
+            original_delay: Delay without interference
+            priority_difference: How many priority levels difference
+            higher_priority_requests: List of higher priority request details
+        """
+        event = {
+            'cycle': self.global_cycle,
+            'core_id': core_id,
+            'bank': bank,
+            'addr': addr,
+            'req_type': req_type,
+            'scheduled_delay': scheduled_delay,
+            'original_delay': original_delay,
+            'extra_delay': scheduled_delay - original_delay,
+            'priority_difference': priority_difference,
+            'higher_priority_requests': higher_priority_requests,
+            'type': 'ddr_scheduler_interference'
+        }
+        
+        self.ddr_scheduler_interference.append(event)
+        self.interference_stats['ddr_scheduler_interference'] += 1
+        self.interference_stats['total_interference_events'] += 1
+        
+        # Update per-core statistics
+        self._ensure_core_interference_tracking(core_id)
+        self.per_core_interference[core_id]['suffered'] += 1
+    
+    def get_interference_summary(self):
+        """
+        Get a comprehensive summary of all interference events
+        """
+        summary = {
+            'total_events': self.interference_stats['total_interference_events'],
+            'by_type': {
+                'cache_interferences': self.interference_stats['cache_interferences'],
+                'bus_contention': self.interference_stats['bus_contention'],
+                'ddr_bank_conflicts': self.interference_stats['ddr_bank_conflicts'],
+                'ddr_scheduler_interference': self.interference_stats['ddr_scheduler_interference']
+            },
+            'per_core': self.per_core_interference,
+            'events': {
+                'cache_interferences': self.cache_interferences,
+                'bus_contention': self.bus_contention_events,
+                'ddr_bank_conflicts': self.ddr_bank_conflicts,
+                'ddr_scheduler_interference': self.ddr_scheduler_interference
+            }
+        }
+        return summary
+    
+        
 
     def _ensure_core_tracking(self, core_id):
         """Ensure tracking structures exist for a given core"""
@@ -429,80 +537,8 @@ class Var:
             cycle=cycle
         )
     
-    def log_lower_level_access(self, instr_id, level_from, level_to, operation, addr, is_writeback=False):
-        """Log when a lower level memory access occurs (L2 access or DDR access)"""
-        if not hasattr(self, 'lower_level_accesses'):
-            self.lower_level_accesses = []
-        
-        access_record = {
-            'instr_id': instr_id,
-            'from_level': level_from,
-            'to_level': level_to,
-            'operation': operation,
-            'address': addr,
-            'is_writeback': is_writeback,
-            'cycle': self.global_cycle
-        }
-        self.lower_level_accesses.append(access_record)
-        
-        # Add step to instruction sequence
-        step_type = "WRITEBACK" if is_writeback else f"{level_from}_TO_{level_to}"
-        self.add_instruction_step(
-            instr_id=instr_id,
-            step_type=step_type,
-            level=level_from,
-            details={'operation': operation, 'addr': addr, 'target': level_to},
-            cycle=self.global_cycle
-        )
-    
-    def log_shared_resource_event(self, event_type, resource_type, initiators, details,cycle):
-        """Log when multiple initiators access shared resources simultaneously"""
-        event = {
-            'cycle': cycle,
-            'type': event_type,
-            'resource': resource_type,
-            'initiators': initiators.copy(),  # Core IDs involved
-            'details': details.copy()
-        }
-        self.shared_resource_events.append(event)
-    
-    def log_ddr_access(self, core_id, addr, operation, bank, row, status, id_):
-        """Log DDR memory access for contention analysis"""
-        cycle = self.global_cycle
-        access = {
-            'cycle': cycle,
-            'core_id': core_id,
-            'addr': addr,
-            'operation': operation,
-            'bank': bank,
-            'row': row,
-            'status': status,
-            'id': id_,
-        }
-        self.access_ddr['cycle'].append(cycle)
-        self.access_ddr['core_id'].append(core_id)
-        self.access_ddr['addr'].append(addr)
-        self.access_ddr['operation'].append(operation)
-        self.access_ddr['bank'].append(bank)
-        self.access_ddr['row'].append(row)
-        self.access_ddr['status'].append(status)
-        self.access_ddr['id'].append(id_)
-        
-        # Log as lower level access
-        self.log_lower_level_access(
-            instr_id=id_,
-            level_from="L2",
-            level_to="DDR",
-            operation=operation,
-            addr=addr,
-            is_writeback=(operation == 'write')
-        )
-    
-    
-    
     def clear_history(self):
         self.global_cycle = 0
-        self.shared_resource_events = []
         self.instruction_sequences = []
         if hasattr(self, 'memory_access_sequences'):
             self.memory_access_sequences = []
@@ -524,7 +560,6 @@ class Var:
     
     def clear_history(self):
         self.global_cycle = 0
-        self.shared_resource_events = []
         self.instruction_sequences = []
         if hasattr(self, 'memory_access_sequences'):
             self.memory_access_sequences = []
@@ -785,8 +820,6 @@ class DDRMemoryController:
             # Check for intra-bank constraints (e.g., tRC for ACT commands, tCCD for consecutive RD/WR to same bank)
             # This is a simplified check for illustration
             last_cmd_time = self.last_command_time.get(bank, -self.tRC) # Default if no previous command
-            if self.vars.cycle < last_cmd_time + self.tCCD: # Basic command-to-command delay
-                 continue
 
             self.sequence_ddr.append({'stage':'ready','cycle':self.vars.global_cycle,'type':req.req_type.upper(),'core':req.core_id,'addr':req.addr})
             candidates.append(req)
@@ -868,11 +901,6 @@ class DDRMemoryController:
         self.scheduled_ddr_requests.append({'request': best_req, 'bank': bank, 'row': row, 'status': row_status})
 
 
-        self.vars.log_ddr_access(best_req.core_id, best_req.addr, best_req.req_type,
-                               self.ddr._get_bank(best_req.addr), self.ddr._get_row(best_req.addr), row_status,best_req.id_)
-        #for cmd in candidates[1:]:
-        #    self.vars.log_ddr_access(cmd.core_id, cmd.addr, cmd.req_type,
-        #                       self.ddr._get_bank(cmd.addr), self.ddr._get_row(cmd.addr), 'waiting',best_req.id_)
 
 
         self.vars.log_ddr_command(
@@ -1038,6 +1066,48 @@ class CacheLevel:
         self.miss_tab = np.zeros((self.num_sets,assoc))
         self.hit_tab = np.zeros((self.num_sets,assoc))
 
+    def _log_cross_core_eviction(self, index, tag, victim_idx, id_=None):
+        """Check if the evicted line belongs to another core and log interference"""
+        set_idx = index
+        victim_line = self.sets[index][victim_idx]
+        
+        if victim_line.valid:
+            # Check if this line is tracked in the global occupancy
+            key = (set_idx, victim_line.tag)
+            if key in self.vars.cache_occupancy[self.level]:
+                owner_info = self.vars.cache_occupancy[self.level][key]
+                evicted_core_id = owner_info['core_id']
+                
+                # If the evicted line belongs to a different core, it's interference
+                if evicted_core_id != self.core_id:
+                    evicted_addr = ((victim_line.tag * self.num_sets) + set_idx) * self.line_size
+                    
+                    # Get the address that caused the eviction
+                    causing_addr = ((tag * self.num_sets) + set_idx) * self.line_size
+                    
+                    self.vars.log_cache_interference(
+                        level=self.level,
+                        set_idx=set_idx,
+                        tag=victim_line.tag,
+                        evicted_core_id=evicted_core_id,
+                        evicted_instr_id=owner_info.get('instr_id', None),
+                        causing_core_id=self.core_id,
+                        causing_instr_id=id_,
+                        evicted_addr=evicted_addr,
+                        causing_addr=causing_addr
+                    )
+                
+                # Remove from occupancy tracking
+                del self.vars.cache_occupancy[self.level][key]
+            
+            # Update occupancy with new line
+            new_key = (set_idx, tag)
+            self.vars.cache_occupancy[self.level][new_key] = {
+                'core_id': self.core_id,
+                'cycle': self.vars.global_cycle,
+                'instr_id': id_
+            }
+
     # Extract the set index from the address
     #  addr = [ tag ][ idx ][ offset ]
     def _index(self, addr):
@@ -1108,14 +1178,6 @@ class CacheLevel:
         # Log if this is a clean or dirty eviction
         if victim_line.valid and self.write_back and victim_line.dirty:
             victim_addr = ((victim_line.tag * self.num_sets) + index) * self.line_size
-            self.vars.log_lower_level_access(
-                instr_id=id_,
-                level_from=self.level,
-                level_to="lower",
-                operation="write",
-                addr=victim_addr,
-                is_writeback=True
-            )
     
         def lower_cb():
             if victim_line.valid and victim_line.dirty and self.write_back:
@@ -1132,15 +1194,6 @@ class CacheLevel:
             callback()
             self.vars.complete_instruction(id_, self.vars.global_cycle)
     
-        # Log lower level read access
-        self.vars.log_lower_level_access(
-            instr_id=id_,
-            level_from=self.level,
-            level_to="lower",
-            operation="read",
-            addr=addr,
-            is_writeback=False
-        )
     
         if self.lower:
             self.lower.read(addr, lower_cb, origine=self.core_id, id_=id_)
@@ -1207,28 +1260,12 @@ class CacheLevel:
 
             if victim_line.valid and self.write_back and victim_line.dirty:
                 victim_addr = ((victim_line.tag * self.num_sets) + index) * self.line_size
-                self.vars.log_lower_level_access(
-                    instr_id=id_,
-                    level_from=self.level,
-                    level_to="lower",
-                    operation="write",
-                    addr=victim_addr,
-                    is_writeback=True
-                )
 
                 if self.lower:
                     self.lower.write(victim_addr, origine=self.core_id, id_=id_)
                 elif self.memory:
                     self.memory.request(MemoryRequest(origine, self.memory.vars.global_cycle, 'write', victim_addr, id_=id_))
 
-            self.vars.log_lower_level_access(
-                instr_id=id_,
-                level_from=self.level,
-                level_to="lower",
-                operation="read",
-                addr=addr,
-                is_writeback=False
-            )
 
             victim_line.valid = True
             victim_line.tag = tag
