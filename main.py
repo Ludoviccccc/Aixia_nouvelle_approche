@@ -45,9 +45,9 @@ if __name__=='__main__':
  
     #IMGEP parameters
     k = 1 #Number of neighbors in goal achievement strategy
-    N = 100000 #Number of imgep iterations
+    N = 1000#Number of imgep iterations
     capacity = N #History capacity
-    N_init = 1000 #Number of warming iterations
+    N_init = 100 #Number of warming iterations
     print_freq = 100
     num_mutations = 3 #Nb of mutations in goal achievement strategy
 

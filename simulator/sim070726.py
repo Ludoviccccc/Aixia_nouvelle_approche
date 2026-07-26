@@ -27,53 +27,10 @@ class Var:
             max_cycle:int=400,
             bandwidth_window_size:int=10,
                       ):
-
-        # Window configuration
-        self.bandwidth_window_size = bandwidth_window_size # Size of each window in cycles
-        
-        # Per-core command statistics
-        self.command_stats = {
-            'bus': {},    # core_id -> {'read': 0, 'write': 0, 'total': 0}
-            'ddr': {}     # core_id -> {'read': 0, 'write': 0, 'total': 0}
-        }
-        
-        # Track which cores are active
-        self.active_cores = set()
-        
-        
-        self.global_cycle = 0
-        # Track shared resource contention
-        self.max_instructions = max_instructions
-        self.max_cycle = max_cycle
-        self.access_ddr = {
-            'cycle': [],
-            'core_id': [],
-            'addr': [],
-            'operation': [],
-            'bank': [],
-            'row': [],
-            'status': [],
-            'id':[],
-        }
-        make_empty_dict =  lambda: {window:0 for window in range(max_cycle//self.bandwidth_window_size)}
-        self.hits = {"type":"hit","L1":make_empty_dict(),"L2":make_empty_dict()}
-        self.misses = {"type":"miss","L1":make_empty_dict(),"L2":make_empty_dict()}
-        self.events = {"L1":{},"L2":{}}
-        self.count = 0
-        
-        # NEW: Detailed instruction sequence tracking
-        self.instruction_sequences = []  # List of instruction execution records
-        self.current_instruction_id = None
-        # In Var.__init__, add after the existing tracking structures:
-        
-        
-        # Cache interference tracking
-        # Tracks when a cache line is evicted due to another core's access
         self.cache_interferences = {
             'L1': [],  # List of interference events
             'L2': []   # List of interference events
         }
-        
         # Bus contention tracking
         # Tracks when requests are delayed due to bus bandwidth limitations
         self.bus_contention_events = []  # List of contention events
@@ -104,10 +61,70 @@ class Var:
         
         # Per-core interference counts
         self.per_core_interference = {}  # core_id -> {'caused': count, 'suffered': count}
-        # Per-core bandwidth tracking structures
-        self.bus_commands = []  # List of (cycle, command_type, core_id, addr)
-        self.ddr_commands = []  # List of (cycle, command_type, core_id, addr, bank, row)
 
+
+
+
+
+
+
+
+
+        self.global_cycle = 0
+        self.max_instructions = max_instructions
+        self.bandwidth_window_size = bandwidth_window_size
+        self.access_ddr = {
+            'cycle': [],
+            'core_id': [],
+            'addr': [],
+            'operation': [],
+            'bank': [],
+            'row': [],
+            'status': [],
+            'id':[],
+        }
+        make_empty_dict =  lambda: {window:0 for window in range(max_cycle//self.bandwidth_window_size)}
+        self.hits = {"type":"hit","L1":make_empty_dict(),"L2":make_empty_dict()}
+        self.misses = {"type":"miss","L1":make_empty_dict(),"L2":make_empty_dict()}
+        self.events = {"L1":{},"L2":{}}
+        self.count = 0
+        
+    def log_event(self,
+            type_:str,
+            cycle:int,
+            level:str,
+            core_id:int,
+            addr:int,
+            way:int,
+            operation:str,
+            id_:int,
+            ):
+        access = {
+                "cycle":cycle,
+                "type":type_,
+                "operation":operation,
+                "instr_id":id_,
+                "addr": addr,
+                "core_id": core_id,
+                "way": way
+                }
+        if id_>=self.max_instructions:
+            raise TypeError(f'id_ {id_} is too big')
+        #add to self.events dictionary
+        if addr not in self.events[level]:
+            self.events[level][addr] = [access]
+        else:
+            self.events[level][addr].append(access)
+        if type_=="miss":
+            self.misses[level][id_//self.bandwidth_window_size] += 1
+        if type_=="hit":
+            self.hits[level][id_//self.bandwidth_window_size] += 1
+        if level=='L1':
+            self.count +=1
+        
+# ==========================================================
+# NEW METHODS FOR INTERFERENCE TRACKING
+# ==========================================================
 
     def _ensure_core_interference_tracking(self, core_id):
         """Ensure per-core interference tracking exists"""
@@ -301,272 +318,8 @@ class Var:
             }
         }
         return summary
+            
     
-        
-
-    def _ensure_core_tracking(self, core_id):
-        """Ensure tracking structures exist for a given core"""
-        if core_id not in self.command_stats['bus']:
-            self.command_stats['bus'][core_id] = {'read': 0, 'write': 0, 'total': 0}
-        if core_id not in self.command_stats['ddr']:
-            self.command_stats['ddr'][core_id] = {'read': 0, 'write': 0, 'total': 0}
-        if core_id not in self.bandwidth_data['bus']:
-            self.bandwidth_data['bus'][core_id] = {}
-        if core_id not in self.bandwidth_data['ddr']:
-            self.bandwidth_data['ddr'][core_id] = {}
-        
-        self.active_cores.add(core_id)
-    
-    def log_bus_command(self, command_type, core_id, addr, is_writeback=False):
-        """Log a bus command for a specific core"""
-        cycle = self.global_cycle
-        
-        # Ensure tracking exists for this core
-        self._ensure_core_tracking(core_id)
-        
-        cmd_record = {
-            'cycle': cycle,
-            'type': command_type,  # 'read' or 'write'
-            'core_id': core_id,
-            'addr': addr,
-            'is_writeback': is_writeback
-        }
-        self.bus_commands.append(cmd_record)
-        
-        # Update per-core statistics
-        self.command_stats['bus'][core_id][command_type] += 1
-        self.command_stats['bus'][core_id]['total'] += 1
-        
-        # Update per-core window statistics
-        window_idx = cycle // self.bandwidth_window_size
-        if window_idx not in self.bandwidth_data['bus'][core_id]:
-            self.bandwidth_data['bus'][core_id][window_idx] = {'read': 0, 'write': 0, 'total': 0}
-        self.bandwidth_data['bus'][core_id][window_idx][command_type] += 1
-        self.bandwidth_data['bus'][core_id][window_idx]['total'] += 1
-    
-    def log_ddr_command(self, command_type, core_id, addr, bank, row, is_writeback=False):
-        """Log a DDR command for a specific core"""
-        cycle = self.global_cycle
-        
-        # Ensure tracking exists for this core
-        self._ensure_core_tracking(core_id)
-        
-        cmd_record = {
-            'cycle': cycle,
-            'type': command_type,  # 'read' or 'write'
-            'core_id': core_id,
-            'addr': addr,
-            'bank': bank,
-            'row': row,
-            'is_writeback': is_writeback
-        }
-        self.ddr_commands.append(cmd_record)
-        
-        # Update per-core statistics
-        self.command_stats['ddr'][core_id][command_type] += 1
-        self.command_stats['ddr'][core_id]['total'] += 1
-        
-        # Update per-core window statistics
-        window_idx = cycle // self.bandwidth_window_size
-        if window_idx not in self.bandwidth_data['ddr'][core_id]:
-            self.bandwidth_data['ddr'][core_id][window_idx] = {'read': 0, 'write': 0, 'total': 0}
-        self.bandwidth_data['ddr'][core_id][window_idx][command_type] += 1
-        self.bandwidth_data['ddr'][core_id][window_idx]['total'] += 1
-        
-    def start_instruction(self, instr_id, cycle, core_id, operation, addr):
-        """Start tracking a new instruction"""
-        self.current_instruction_id = instr_id
-        self.instruction_sequences.append({
-            'instr_id': instr_id,
-            'cycle_start': cycle,
-            'core_id': core_id,
-            'operation': operation,
-            'address': addr,
-            'steps': [],
-            'cycle_end': None,
-            'total_cycles': None
-        })
-    
-    def add_instruction_step(self, instr_id, step_type, level, details, cycle):
-        """Add a step to the current instruction's sequence"""
-        # Find the instruction record
-        for record in self.instruction_sequences:
-            if record['instr_id'] == instr_id:
-                record['steps'].append({
-                    'cycle': cycle,
-                    'step_type': step_type,
-                    'level': level,
-                    'details': details
-                })
-                break
-    
-    def complete_instruction(self, instr_id, cycle):
-        """Mark instruction as complete"""
-        for record in self.instruction_sequences:
-            if record['instr_id'] == instr_id:
-                record['cycle_end'] = cycle
-                record['total_cycles'] = cycle - record['cycle_start']
-                break
-        self.current_instruction_id = None
-    
-    def log_memory_access_sequence(self, instr_id, core_id, addr, operation, 
-                                   level, access_type, eviction_info=None, 
-                                   lower_access=None):
-        """
-        Log the complete memory access sequence for an instruction
-        
-        access_type: 'hit' or 'miss'
-        eviction_info: {'dirty': bool, 'evicted_addr': int, 'needs_writeback': bool}
-        lower_access: {'level': str, 'operation': str, 'addr': int}
-        """
-        sequence = {
-            'instr_id': instr_id,
-            'core_id': core_id,
-            'address': addr,
-            'operation': operation,  # 'read' or 'write'
-            'cache_level': level,    # 'L1' or 'L2'
-            'access_type': access_type,  # 'hit' or 'miss'
-            'eviction': eviction_info,
-            'lower_memory_access': lower_access,
-            'cycle': self.global_cycle
-        }
-        
-        if not hasattr(self, 'memory_access_sequences'):
-            self.memory_access_sequences = []
-        self.memory_access_sequences.append(sequence)
-
-    def log_event(self,
-            type_:str,
-            cycle:int,
-            level:str,
-            core_id:int,
-            addr:int,
-            way:int,
-            operation:str,
-            id_:int,
-            ):
-        access = {
-                "cycle":cycle,
-                "type":type_,
-                "operation":operation,
-                "instr_id":id_,
-                "addr": addr,
-                "core_id": core_id,
-                "way": way
-                }
-        if cycle>=self.max_cycle:
-            raise TypeError(f'cycle {cycle} is too big')
-        #add to self.events dictionary
-        if addr not in self.events[level]:
-            self.events[level][addr] = [access]
-        else:
-            self.events[level][addr].append(access)
-        if type_=="miss":
-            self.misses[level][cycle//self.bandwidth_window_size] += 1
-        if type_=="hit":
-            self.hits[level][cycle//self.bandwidth_window_size] += 1
-        if level=='L1':
-            self.count +=1
-        
-        # NEW: Log detailed sequence based on operation type and hit/miss
-        self.log_memory_access_sequence(
-            instr_id=id_,
-            core_id=core_id,
-            addr=addr,
-            operation=operation,
-            level=level,
-            access_type=type_
-        )
-        
-        # Add step to instruction sequence
-        self.add_instruction_step(
-            instr_id=id_,
-            step_type=f"{level}_{type_.upper()}",
-            level=level,
-            details={'operation': operation, 'way': way},
-            cycle=cycle
-        )
-    
-    def log_eviction(self,
-                    cycle,
-                    level,
-                    core_id,
-                    evicted_addr,
-                    way,
-                    dirty,
-                    operation,
-                    reason="miss_replacement",
-                    id_=0,
-                    ):
-        access = {
-                    "type":"eviction",
-                    "code_id":core_id,
-                    "way":way,
-                    "operation":operation,
-                    "cycle":cycle,
-                    "dirty":dirty,
-                    "instr_id":id_,
-                    "evicted_addr": evicted_addr,
-                    "reason": reason
-                }
-        if evicted_addr not in self.events[level]:
-            self.events[level][evicted_addr] = [access]
-        else:
-            self.events[level][evicted_addr].append(access)
-        
-        # NEW: Log eviction details for the instruction sequence
-        if hasattr(self, 'memory_access_sequences') and self.memory_access_sequences:
-            # Find the most recent access for this instruction and add eviction info
-            for seq in reversed(self.memory_access_sequences):
-                if seq['instr_id'] == id_ and seq['eviction'] is None:
-                    seq['eviction'] = {
-                        'dirty': dirty,
-                        'evicted_addr': evicted_addr,
-                        'way': way,
-                        'reason': reason,
-                        'needs_writeback': dirty
-                    }
-                    break
-        
-        # Add step to instruction sequence
-        self.add_instruction_step(
-            instr_id=id_,
-            step_type=f"{level}_EVICTION",
-            level=level,
-            details={'evicted_addr': evicted_addr, 'dirty': dirty, 'reason': reason, 'way': way},
-            cycle=cycle
-        )
-    
-    def clear_history(self):
-        self.global_cycle = 0
-        self.instruction_sequences = []
-        if hasattr(self, 'memory_access_sequences'):
-            self.memory_access_sequences = []
-        if hasattr(self, 'lower_level_accesses'):
-            self.lower_level_accesses = []
-    def clear_bandwidth_history(self):
-        """Clear bandwidth tracking data"""
-        self.bus_commands = []
-        self.ddr_commands = []
-        self.bandwidth_data = {
-            'bus': {},
-            'ddr': {}
-        }
-        self.command_stats = {
-            'bus': {},
-            'ddr': {}
-        }
-        self.active_cores = set()
-    
-    def clear_history(self):
-        self.global_cycle = 0
-        self.instruction_sequences = []
-        if hasattr(self, 'memory_access_sequences'):
-            self.memory_access_sequences = []
-        if hasattr(self, 'lower_level_accesses'):
-            self.lower_level_accesses = []
-        self.clear_bandwidth_history()
-
 
 # CacheLine: Represents a single cache line in the cache hierarchy
 # -----------------------------------------------------
@@ -658,6 +411,8 @@ class MemoryRequest:
     def __str__(self):
         return f"<req: {self.req_type.upper()}@{self.addr} from core {self.core_id} >"
 
+
+
 # ---------------------------------------------------------
 # Interconnect model between CPU cores and DDR, with bandwidth and latency
 # ---------------------------------------------------------
@@ -669,66 +424,101 @@ class MemoryRequest:
 # - Using a heapqueue ensures that all items are and remain sorted
 #   according to their ready_time (and req)
 class Interconnect:
-    def __init__(self, memory_controller, delay=5, bandwidth=4,vars_=None):
+    def __init__(self, memory_controller, delay=5, bandwidth=4, vars_=None):
         self.vars = vars_
         self.memory_controller = memory_controller
         self.queue = []               # Queue of pending memory requests (ready_time, request)
         self.delay = delay            # Base delay before forwarding to DDR controller
         self.bandwidth = bandwidth    # Max number of requests per cycle
 
+        # Track contention statistics
+        self.total_requests_processed = 0
+        self.total_requests_delayed = 0
+
     # Push a request into the interconnect queue.
     # We push the tuple (ready_time, request) where ready_time is the earliest
     # time at which the request may be served by the interconnect.
     def request(self, req):
-        
-
         # Add a random component to the delay for more realistic simulation
-        ready_time = self.vars.cycle + self.delay + random.randint(0, 2)
+        ready_time = self.vars.global_cycle + self.delay + random.randint(0, 2)
         heapq.heappush(self.queue, (ready_time, req))
 
-        #print(f"{self.vars.global_cycle}: [Interconnect] Request {req.req_type.upper()}@{req.addr} from core {req.core_id} queued, to be released at {ready_time}")
-        # Log bus command with core_id
-        self.vars.log_bus_command(
-            command_type=req.req_type,
-            core_id=req.core_id,  # Important: pass the core_id from the request
-            addr=req.addr,
-            is_writeback=(req.req_type == 'write')
-        )
 
     # Process the interconnect's current cycle
     def tick(self):
-        
-        processed = 0
-        requests_to_forward = []
+        """
+        Process bus requests with bandwidth limitation.
+        Returns: Number of requests forwarded this cycle
+        """
 
-        # Identify requests ready to be forwarded to the memory controller, respecting bandwidth
-        while self.queue and self.queue[0][0] <= self.vars.cycle and processed < self.bandwidth:
+        # Step 1: Collect ALL requests that are ready to be forwarded
+        ready_requests = []
+        while self.queue and self.queue[0][0] <= self.vars.global_cycle:
             ready_time, req = heapq.heappop(self.queue)
-            requests_to_forward.append(req)
-            processed += 1
+            ready_requests.append(req)
 
-        # Forward the selected requests to the memory controller
-        for req in requests_to_forward:
-            #print(f"{self.vars.global_cycle}: [Interconnect] Request {req} sent to memory controller")
-            # Log bus forwarding with core_id
-            self.vars.log_bus_command(
-            command_type=req.req_type,
-            core_id=req.core_id,  # Pass core_id
-            addr=req.addr,
-            is_writeback=(req.req_type == 'write')
-            )
+        # If no requests ready, return
+        if not ready_requests:
+            return 0
 
+        # Step 2: Check for contention
+        # Contention occurs when more requests are ready than bandwidth allows
+        if len(ready_requests) > self.bandwidth:
+            # Log contention for delayed requests
+            # The first 'bandwidth' requests will be forwarded
+            # The rest will be delayed and re-queued
+            forwarded_requests = ready_requests[:self.bandwidth]
+            delayed_requests = ready_requests[self.bandwidth:]
+
+            # Log contention events for delayed requests
+            for req in delayed_requests:
+                self.vars.log_bus_contention(
+                    core_id=req.core_id,
+                    req_type=req.req_type,
+                    addr=req.addr,
+                    scheduled_delay=self.delay + random.randint(0, 2) + 1,  # Extra delay due to contention
+                    original_delay=self.delay,
+                    competing_requests=len(ready_requests)
+                )
+                self.total_requests_delayed += 1
+
+            # Re-queue delayed requests for next cycle
+            # They will be ready again next cycle (or with small delay)
+            for req in delayed_requests:
+                # Re-queue with next cycle ready time
+                heapq.heappush(self.queue, (self.vars.global_cycle + 1, req))
+        else:
+            # No contention, forward all ready requests
+            forwarded_requests = ready_requests
+
+        # Step 3: Forward requests to memory controller
+        for req in forwarded_requests:
+            # Log bus forwarding
+
+            # Send to memory controller
             self.memory_controller.request(req)
+            self.total_requests_processed += 1
 
+        # Return number of requests forwarded this cycle
+        return len(forwarded_requests)
 
-
-
+    def get_contention_stats(self):
+        """
+        Get contention statistics for the interconnect
+        """
+        return {
+            'total_requests_processed': self.total_requests_processed,
+            'total_requests_delayed': self.total_requests_delayed,
+            'delay_rate': self.total_requests_delayed / max(1, self.total_requests_processed),
+            'bandwidth': self.bandwidth,
+            'current_queue_size': len(self.queue)
+        }
 # ---------------------------------------------------------
 # DDR Memory Controller Model
 # Arbitrates and schedules requests for the DDR memory
 # ---------------------------------------------------------
 class DDRMemoryController:
-    def __init__(self, ddr_model, tRCD=15, tRP=15, tCAS=15, tRC=30, tWR=15, tRTP=8, tCCD=4,vars_=None):
+    def __init__(self, ddr_model, tRCD=15, tRP=15, tCAS=15, tRC=30, tWR=15, tRTP=8, tCCD=4, vars_=None):
 
         self.vars = vars_
         self.ddr = ddr_model
@@ -752,41 +542,39 @@ class DDRMemoryController:
         self.last_access_addr = {} # To track the last accessed address for a core
 
         self.sequence_ddr = []
+        
+        # Track DDR statistics
+        self.total_requests_scheduled = 0
+        self.total_bank_conflicts = 0
+        self.total_row_hits = 0
+        self.total_row_misses = 0
 
     # Enqueue a request
     def request(self, req):
-        
-        #print(f"{self.vars.global_cycle}: [DDR controller] request queued: {req.req_type.upper()}@{req.addr}")
         heapq.heappush(self.queue, (req.time, req)) # Store with original arrival time for fairness
         self.sequence_ddr.append({'stage':'queued','cycle':self.vars.global_cycle,'type':req.req_type.upper(),'core':req.core_id,'addr':req.addr})
 
     def tick(self):
-        
         # First, complete any requests that DDR has finished processing
         self._complete_ddr_requests()
 
         # Then, schedule a new request if possible
         output = self._schedule_next_request()
 
-
         return output
 
-
     def _complete_ddr_requests(self):
-        
         # Requests are completed as soon as DDR signals they are done.
         completed = []
         for req_info in self.scheduled_ddr_requests:
             req = req_info['request']
-            if req.completion_time <= self.vars.cycle:
+            if req.completion_time <= self.vars.global_cycle:
                 if req.req_type == 'read':
                     _ = self.ddr.memory.get(req.addr, 0) # Read value from DDR model
-                    #print(f"{self.vars.global_cycle}: [DDR controller] READ@{req.addr} complete")
                     self.sequence_ddr.append({'stage':'complete','cycle':self.vars.global_cycle,'type':req.req_type.upper(),'core':req.core_id,'addr':req.addr})
                     if req.callback:
                         req.callback()
                 elif req.req_type == 'write':
-                    #print(f"{self.vars.global_cycle}: [DDR controller] WRITE@{req.addr} complete")
                     self.sequence_ddr.append({'stage':'complete','cycle':self.vars.global_cycle,'type':req.req_type.upper(),'core':req.core_id,'addr':req.addr})
                     pass
 
@@ -795,44 +583,37 @@ class DDRMemoryController:
         for req_info in completed:
             self.scheduled_ddr_requests.remove(req_info)
 
-
     def _schedule_next_request(self):
-        
+        """
+        Schedule the next DDR request with comprehensive interference tracking.
+        Returns: Dictionary with scheduling information
+        """
         if not self.queue:  # No request, return
-            return
+            return None
 
-        # Apply arbitration strategy:
-        # 1. Read prioritization
-        # 2. Opened row prioritization
-        # 3. RD/WR batching (simplified by favoring row hits and avoiding bank conflicts)
-        # 4. Older commands (handled by initial sorting in `self.queue` which is a min-heap based on arrival time)
-
-        # Candidates for scheduling
+        # Step 1: Identify all ready and schedulable candidates
         candidates = []
         for _, req in self.queue:
             bank = self.ddr._get_bank(req.addr)
             row = self.ddr._get_row(req.addr)
 
             # Check if bank is available (not in precharge)
-            if self.bank_precharge_complete_time[bank] > self.vars.cycle:
+            if self.bank_precharge_complete_time[bank] > self.vars.global_cycle:
                 continue
 
-            # Check for intra-bank constraints (e.g., tRC for ACT commands, tCCD for consecutive RD/WR to same bank)
-            # This is a simplified check for illustration
-            last_cmd_time = self.last_command_time.get(bank, -self.tRC) # Default if no previous command
+            # Check for intra-bank constraints
+            last_cmd_time = self.last_command_time.get(bank, -self.tRC)
+            if self.vars.global_cycle < last_cmd_time + self.tCCD:
+                continue
 
             self.sequence_ddr.append({'stage':'ready','cycle':self.vars.global_cycle,'type':req.req_type.upper(),'core':req.core_id,'addr':req.addr})
             candidates.append(req)
 
         if not candidates:
-            #print(f"{self.vars.global_cycle}: [DDR controller] No suitable candidates for scheduling this cycle.")
-            return
+            return None
 
-        # Sort candidates based on priority rules (simplified scoring for demonstration)
-        # We want to prioritize:
-        # 1. Row hits
-        # 2. Reads over Writes
-        # 3. Older requests (handled by min-heap property of self.queue)
+        # Step 2: Sort candidates based on priority rules
+        # Priority: 1) Row hits, 2) Reads over writes, 3) Older requests
         candidates.sort(key=lambda req: (
             0 if self.bank_open_row[self.ddr._get_bank(req.addr)] == self.ddr._get_row(req.addr) else 1, # Row hit first
             0 if req.req_type == 'read' else 1, # Reads before writes
@@ -842,86 +623,162 @@ class DDRMemoryController:
         best_req = candidates[0]
         bank = self.ddr._get_bank(best_req.addr)
         row = self.ddr._get_row(best_req.addr)
+        
+        # Step 3: Check for bank conflicts BEFORE scheduling
+        # This is crucial for interference tracking
+        bank_requests = {}
+        for req in candidates:
+            req_bank = self.ddr._get_bank(req.addr)
+            if req_bank not in bank_requests:
+                bank_requests[req_bank] = []
+            bank_requests[req_bank].append(req)
+        
+        # Track bank conflicts - multiple requests to same bank
+        conflicting_banks = {bank: reqs for bank, reqs in bank_requests.items() if len(reqs) > 1}
+        
+        for conflict_bank, reqs in conflicting_banks.items():
+            # Log conflicts for all requests except the one that will be scheduled
+            for req in reqs:
+                if req != best_req and req not in [c for c in candidates if c == best_req]:
+                    # Calculate extra delay due to conflict
+                    extra_delay = self.tCCD + random.randint(0, 5)
+                    self.vars.log_ddr_bank_conflict(
+                        core_id=req.core_id,
+                        bank=conflict_bank,
+                        row=self.ddr._get_row(req.addr),
+                        addr=req.addr,
+                        req_type=req.req_type,
+                        scheduled_delay=self.ddr.base_latency + extra_delay,
+                        original_delay=self.ddr.base_latency,
+                        conflict_core_id=best_req.core_id
+                    )
+                    self.total_bank_conflicts += 1
 
-        # Calculate actual delay for the request
+        # Step 4: Calculate actual delay for the request
         delay = self.ddr.base_latency
-        #row_status = "ROW HIT"
-        row_status = 1
+        row_status = 1  # 1 = hit, -1 = miss
+        
         if self.bank_open_row[bank] == row:
-            #print(f"{self.vars.global_cycle}: [DDR] ROW HIT@{best_req.addr} for bank {bank} ")
+            # Row hit
             delay = self.ddr.row_hit_latency
+            self.total_row_hits += 1
         else:
-            #print(f"{self.vars.global_cycle}: [DDR] ROW MISS@{best_req.addr} for bank {bank} ")
-            delay = self.tRP + self.tRCD + self.tCAS # ACT (tRCD) + PRE (tRP) + CAS
-            #row_status = "ROW MISS"
+            # Row miss - requires precharge + activate
+            delay = self.tRP + self.tRCD + self.tCAS
             row_status = -1
-            self.bank_precharge_complete_time[bank] = self.vars.cycle + self.tRP # Bank busy during precharge
-            self.bank_open_row[bank] = row # Update opened row for the bank
+            self.bank_precharge_complete_time[bank] = self.vars.global_cycle + self.tRP
+            self.bank_open_row[bank] = row
+            self.total_row_misses += 1
 
-        # Add transition penalties (WR->RD or RD->WR)
-        # From Figure 3.10 and 3.11: WR->RD adds twTR, RD->WR adds WL (Write Latency) + 2 cycles
-        # Assuming WR is tCAS + tWR and RD is tCAS
+        # Step 5: Add transition penalties (WR->RD or RD->WR)
         if bank in self.last_access_command:
             last_cmd_type = self.last_access_command[bank]
             if last_cmd_type == 'write' and best_req.req_type == 'read':
-                # Simplified: add twR as turnaround penalty for WR->RD
-                delay += self.tWR # tWTR for actual paper value
-                #print(f"{self.vars.global_cycle}: [DDR] Applying WR->RD transition penalty for Bank {bank}")
+                delay += self.tWR
             elif last_cmd_type == 'read' and best_req.req_type == 'write':
-                # Simplified: add tWR (Write Latency) + 2 cycles for RD->WR
                 delay += self.tWR + 2
-                #print(f"{self.vars.global_cycle}: [DDR] Applying RD->WR transition penalty for Bank {bank}")
 
-        completion_time = self.vars.cycle + delay
+        completion_time = self.vars.global_cycle + delay
 
+        # Step 6: Track DDR scheduler interference
+        # Check if there are higher priority requests that caused delays
+        if len(candidates) > 1:
+            # Find requests that are lower priority than best_req
+            for req in candidates:
+                if req == best_req:
+                    continue
+                    
+                # Determine if this request would have been scheduled earlier
+                # if higher priority requests weren't present
+                priority_diff = 0
+                if best_req.req_type == 'read' and req.req_type == 'write':
+                    priority_diff = 1
+                
+                # Check if this request was delayed due to row hits of other cores
+                req_bank = self.ddr._get_bank(req.addr)
+                if req_bank == bank and self.bank_open_row[bank] == row:
+                    # Same bank, different core might cause additional delay
+                    if req.core_id != best_req.core_id:
+                        priority_diff += 1
+                
+                if priority_diff > 0:
+                    # Log scheduler interference
+                    higher_priority_reqs = []
+                    for h_req in candidates:
+                        if h_req != req:
+                            h_bank = self.ddr._get_bank(h_req.addr)
+                            h_row = self.ddr._get_row(h_req.addr)
+                            if (h_req.req_type == 'read' and req.req_type == 'write') or \
+                               (h_bank == req_bank and self.bank_open_row[h_bank] == h_row):
+                                higher_priority_reqs.append({
+                                    'core': h_req.core_id,
+                                    'type': h_req.req_type,
+                                    'addr': h_req.addr,
+                                    'bank': h_bank,
+                                    'row': h_row
+                                })
+                    
+                    if higher_priority_reqs:
+                        extra_delay = delay + random.randint(0, 10)
+                        self.vars.log_ddr_scheduler_interference(
+                            core_id=req.core_id,
+                            bank=self.ddr._get_bank(req.addr),
+                            addr=req.addr,
+                            req_type=req.req_type,
+                            scheduled_delay=extra_delay,
+                            original_delay=delay,
+                            priority_difference=priority_diff,
+                            higher_priority_requests=higher_priority_reqs
+                        )
 
-
-
-        # Update controller's state after scheduling
-        self.last_command_time[bank] = self.vars.cycle
+        # Step 7: Update controller's state after scheduling
+        self.last_command_time[bank] = self.vars.global_cycle
         self.last_access_command[bank] = best_req.req_type
         self.last_access_addr[bank] = best_req.addr
 
-        # Remove the request from the controller's queue
+        # Step 8: Remove the request from the controller's queue
         for i, (time, req) in enumerate(self.queue):
             if req == best_req:
                 self.queue.pop(i)
                 break
-        heapq.heapify(self.queue) # Re-heapify after pop
+        heapq.heapify(self.queue)
 
-        #print(f"{self.vars.global_cycle}: [DDR controller] Scheduling {best_req.req_type.upper()}@{best_req.addr} via Controller")
-        #print(f"{self.vars.global_cycle}: [DDR controller] Bank {bank}, Row {row} | {row_status} | Calculated Delay: {delay} | Completion at Cycle {completion_time}")
+        self.sequence_ddr.append({'stage':'scheduling','cycle':self.vars.global_cycle,'type':best_req.req_type.upper(),'core':best_req.core_id,'addr':best_req.addr})
 
-        self.sequence_ddr.append({'stage':'scheduling','cycle':self.vars.global_cycle,'type':req.req_type.upper(),'core':req.core_id,'addr':req.addr})
-
-        # Pass the request to the DDR
-        best_req.time = self.vars.cycle # Update request time to when it's issued to DDR
+        # Step 9: Pass the request to the DDR
+        best_req.time = self.vars.global_cycle
         best_req.completion_time = completion_time
-        self.ddr.request(best_req) # DDR will now track its internal completion
+        self.ddr.request(best_req)
         self.scheduled_ddr_requests.append({'request': best_req, 'bank': bank, 'row': row, 'status': row_status})
+        self.total_requests_scheduled += 1
 
 
 
-
-        self.vars.log_ddr_command(
-        command_type=best_req.req_type,
-        core_id=best_req.core_id,  # Pass core_id from the request
-        addr=best_req.addr,
-        bank=bank,
-        row=row,
-        is_writeback=(best_req.req_type == 'write')
-        )
-
-        return {'completion_time': completion_time,
-                'row': row,
-                'bank': bank,
-                'status': row_status,
-                'core':best_req.core_id,
-                'delay': delay,
-                'candidates':candidates,
-                'current_type':best_req.req_type,
-                }
-
+        return {
+            'completion_time': completion_time,
+            'row': row,
+            'bank': bank,
+            'status': row_status,
+            'core': best_req.core_id,
+            'delay': delay,
+            'candidates': candidates,
+            'current_type': best_req.req_type,
+            'bank_conflicts': conflicting_banks if conflicting_banks else None,
+        }
+    
+    def get_ddr_stats(self):
+        """
+        Get DDR controller statistics
+        """
+        return {
+            'total_requests_scheduled': self.total_requests_scheduled,
+            'total_bank_conflicts': self.total_bank_conflicts,
+            'total_row_hits': self.total_row_hits,
+            'total_row_misses': self.total_row_misses,
+            'row_hit_rate': self.total_row_hits / max(1, self.total_row_hits + self.total_row_misses),
+            'current_queue_size': len(self.queue),
+            'active_banks': sum(1 for state in self.ddr.bank_states if state != DDRState.IDLE)
+        }
 class DDRState(Enum):
     IDLE = auto()
     ACTIVATE_BANK_ROW = auto()
@@ -1066,6 +923,189 @@ class CacheLevel:
         self.miss_tab = np.zeros((self.num_sets,assoc))
         self.hit_tab = np.zeros((self.num_sets,assoc))
 
+    # Extract the set index from the address
+    #  addr = [ tag ][ idx ][ offset ]
+    def _index(self, addr):
+        return (addr // self.line_size) % self.num_sets
+
+    # Extract the tag from the address
+    #  addr = [ tag ][ idx ][ offset ]
+    def _tag(self, addr):
+        return addr // (self.line_size * self.num_sets)
+
+    # Handles cache read request
+    # Update the CacheLevel.read() method to log lower level accesses:
+
+    def read(self, addr, callback, origine=None, id_=None):
+        index = self._index(addr)
+        tag = self._tag(addr)
+        cache_set = self.sets[index]
+        plru = self.plru_trees[index]
+    
+    
+        # Search the tag in the cache set
+        for i, line in enumerate(cache_set):
+            if line.valid and line.tag == tag:
+                # Cache hit
+                self.hits += 1
+                self.hits_read += 1
+                self.hit_tab[index, i] += 1
+    
+                plru.update_on_access(i)
+    
+                self.vars.log_event(
+                    type_="hit",
+                    cycle=self.vars.global_cycle,
+                    level=self.level,
+                    core_id=self.core_id,
+                    addr=addr,
+                    way=i,
+                    operation="read",
+                    id_=id_,
+                )
+    
+                callback()
+                return
+    
+        # Cache miss
+        self.vars.log_event(
+            type_="miss",
+            cycle=self.vars.global_cycle,
+            level=self.level,
+            core_id=self.core_id,
+            addr=addr,
+            way=i,
+            operation='read',
+            id_=id_
+        )
+    
+        self.misses += 1
+        self.misses_read += 1
+        self.miss_tab[index, i] += 1
+    
+        victim_idx = plru.get_victim()
+        victim_line = cache_set[victim_idx]
+   
+
+        self._log_cross_core_eviction(index, tag, victim_idx, id_)    
+
+
+        # Log if this is a clean or dirty eviction
+        if victim_line.valid and self.write_back and victim_line.dirty:
+            victim_addr = ((victim_line.tag * self.num_sets) + index) * self.line_size
+    
+        def lower_cb():
+            if victim_line.valid and victim_line.dirty and self.write_back:
+                victim_addr = ((victim_line.tag * self.num_sets) + index) * self.line_size
+                if self.lower:
+                    self.lower.write(victim_addr, origine=self.core_id, id_=id_)
+                elif self.memory:
+                    self.memory.request(MemoryRequest(origine, self.memory.vars.global_cycle, 'write', victim_addr, callback=None, id_=id_))
+    
+            victim_line.valid = True
+            victim_line.tag = tag
+            victim_line.dirty = False
+            plru.update_on_access(victim_idx)
+            callback()
+    
+    
+        if self.lower:
+            self.lower.read(addr, lower_cb, origine=self.core_id, id_=id_)
+        elif self.memory:
+            self.memory.request(MemoryRequest(origine, self.memory.vars.global_cycle, 'read', addr, lower_cb, id_=id_))
+    # Handles cache write request
+    def write(self, addr, origine=None, id_=None):
+        index = self._index(addr)
+        tag = self._tag(addr)
+        cache_set = self.sets[index]
+        plru = self.plru_trees[index]
+
+
+        for i, line in enumerate(cache_set):
+            if line.valid and line.tag == tag:
+                # Cache hit in write-back mode
+                self.hits += 1
+                self.hits_write += 1
+
+                line.dirty = True if self.write_back else False
+                plru.update_on_access(i)
+
+                if not self.write_back:
+                    if self.lower:
+                        self.lower.write(addr, origine=self.core_id, id_=id_)
+                    elif self.memory:
+                        self.memory.request(MemoryRequest(origine, self.memory.vars.global_cycle, 'write', addr, id_=id_))
+
+                self.vars.log_event(
+                    type_="hit",
+                    cycle=self.vars.global_cycle,
+                    level=self.level,
+                    core_id=self.core_id,
+                    addr=addr,
+                    way=i,
+                    operation="write",
+                    id_=id_,
+                )
+
+                return
+
+        # Cache miss
+        self.vars.log_event(
+            type_="miss",
+            cycle=self.vars.global_cycle,
+            level=self.level,
+            core_id=self.core_id,
+            addr=addr,
+            way=i,
+            operation="write",
+            id_=id_,
+        )
+
+        self.misses += 1
+        self.misses_write += 1
+
+        if self.write_allocate:
+            victim_idx = plru.get_victim()
+            victim_line = cache_set[victim_idx]
+
+            self._log_cross_core_eviction(index, tag, victim_idx, id_)
+
+            if victim_line.valid and self.write_back and victim_line.dirty:
+                victim_addr = ((victim_line.tag * self.num_sets) + index) * self.line_size
+
+                if self.lower:
+                    self.lower.write(victim_addr, origine=self.core_id, id_=id_)
+                elif self.memory:
+                    self.memory.request(MemoryRequest(origine, self.memory.vars.global_cycle, 'write', victim_addr, id_=id_))
+
+
+            victim_line.valid = True
+            victim_line.tag = tag
+            victim_line.dirty = self.write_back
+            plru.update_on_access(victim_idx)
+        else:
+            if self.lower:
+                self.lower.write(addr, origine=self.core_id, id_=id_)
+            elif self.memory:
+                self.memory.request(MemoryRequest(origine, self.memory.vars.global_cycle, 'write', addr, id_=id_))
+
+    def stats(self):
+        total = self.hits + self.misses
+        denominator = self.miss_tab + self.hit_tab
+        denominator[denominator==0] = -1
+        self.cache_miss_tab = self.miss_tab/(denominator)
+        self.cache_miss_tab[self.cache_miss_tab<=0] = 0
+        return {
+            'level': self.level,
+            'hits': self.hits,
+            'hits_read': self.hits_read,
+            'hits_write': self.hits_write,
+            'misses_read': self.misses_read,
+            'misses_write': self.misses_write,
+            'misses': self.misses,
+            'miss_rate': self.misses / total if total else 0,
+            'cache_miss_detailled':self.miss_tab,#number of miss at every locaation
+        }
     def _log_cross_core_eviction(self, index, tag, victim_idx, id_=None):
         """Check if the evicted line belongs to another core and log interference"""
         set_idx = index
@@ -1108,193 +1148,7 @@ class CacheLevel:
                 'instr_id': id_
             }
 
-    # Extract the set index from the address
-    #  addr = [ tag ][ idx ][ offset ]
-    def _index(self, addr):
-        return (addr // self.line_size) % self.num_sets
 
-    # Extract the tag from the address
-    #  addr = [ tag ][ idx ][ offset ]
-    def _tag(self, addr):
-        return addr // (self.line_size * self.num_sets)
-
-    # Handles cache read request
-    # Update the CacheLevel.read() method to log lower level accesses:
-
-    def read(self, addr, callback, origine=None, id_=None):
-        index = self._index(addr)
-        tag = self._tag(addr)
-        cache_set = self.sets[index]
-        plru = self.plru_trees[index]
-    
-        # Start tracking this instruction if not already started
-        if id_ is not None and self.vars.current_instruction_id != id_:
-            self.vars.start_instruction(id_, self.vars.global_cycle, self.core_id, 'read', addr)
-    
-        # Search the tag in the cache set
-        for i, line in enumerate(cache_set):
-            if line.valid and line.tag == tag:
-                # Cache hit
-                self.hits += 1
-                self.hits_read += 1
-                self.hit_tab[index, i] += 1
-    
-                plru.update_on_access(i)
-    
-                self.vars.log_event(
-                    type_="hit",
-                    cycle=self.vars.global_cycle,
-                    level=self.level,
-                    core_id=self.core_id,
-                    addr=addr,
-                    way=i,
-                    operation="read",
-                    id_=id_,
-                )
-    
-                callback()
-                self.vars.complete_instruction(id_, self.vars.global_cycle)
-                return
-    
-        # Cache miss
-        self.vars.log_event(
-            type_="miss",
-            cycle=self.vars.global_cycle,
-            level=self.level,
-            core_id=self.core_id,
-            addr=addr,
-            way=i,
-            operation='read',
-            id_=id_
-        )
-    
-        self.misses += 1
-        self.misses_read += 1
-        self.miss_tab[index, i] += 1
-    
-        victim_idx = plru.get_victim()
-        victim_line = cache_set[victim_idx]
-    
-        # Log if this is a clean or dirty eviction
-        if victim_line.valid and self.write_back and victim_line.dirty:
-            victim_addr = ((victim_line.tag * self.num_sets) + index) * self.line_size
-    
-        def lower_cb():
-            if victim_line.valid and victim_line.dirty and self.write_back:
-                victim_addr = ((victim_line.tag * self.num_sets) + index) * self.line_size
-                if self.lower:
-                    self.lower.write(victim_addr, origine=self.core_id, id_=id_)
-                elif self.memory:
-                    self.memory.request(MemoryRequest(origine, self.memory.vars.global_cycle, 'write', victim_addr, callback=None, id_=id_))
-    
-            victim_line.valid = True
-            victim_line.tag = tag
-            victim_line.dirty = False
-            plru.update_on_access(victim_idx)
-            callback()
-            self.vars.complete_instruction(id_, self.vars.global_cycle)
-    
-    
-        if self.lower:
-            self.lower.read(addr, lower_cb, origine=self.core_id, id_=id_)
-        elif self.memory:
-            self.memory.request(MemoryRequest(origine, self.memory.vars.global_cycle, 'read', addr, lower_cb, id_=id_))
-    # Handles cache write request
-    def write(self, addr, origine=None, id_=None):
-        index = self._index(addr)
-        tag = self._tag(addr)
-        cache_set = self.sets[index]
-        plru = self.plru_trees[index]
-
-        # Start tracking this instruction if not already started
-        if id_ is not None and self.vars.current_instruction_id != id_:
-            self.vars.start_instruction(id_, self.vars.global_cycle, self.core_id, 'write', addr)
-
-        for i, line in enumerate(cache_set):
-            if line.valid and line.tag == tag:
-                # Cache hit in write-back mode
-                self.hits += 1
-                self.hits_write += 1
-
-                line.dirty = True if self.write_back else False
-                plru.update_on_access(i)
-
-                if not self.write_back:
-                    if self.lower:
-                        self.lower.write(addr, origine=self.core_id, id_=id_)
-                    elif self.memory:
-                        self.memory.request(MemoryRequest(origine, self.memory.vars.global_cycle, 'write', addr, id_=id_))
-
-                self.vars.log_event(
-                    type_="hit",
-                    cycle=self.vars.global_cycle,
-                    level=self.level,
-                    core_id=self.core_id,
-                    addr=addr,
-                    way=i,
-                    operation="write",
-                    id_=id_,
-                )
-
-                self.vars.complete_instruction(id_, self.vars.global_cycle)
-                return
-
-        # Cache miss
-        self.vars.log_event(
-            type_="miss",
-            cycle=self.vars.global_cycle,
-            level=self.level,
-            core_id=self.core_id,
-            addr=addr,
-            way=i,
-            operation="write",
-            id_=id_,
-        )
-
-        self.misses += 1
-        self.misses_write += 1
-
-        if self.write_allocate:
-            victim_idx = plru.get_victim()
-            victim_line = cache_set[victim_idx]
-
-            if victim_line.valid and self.write_back and victim_line.dirty:
-                victim_addr = ((victim_line.tag * self.num_sets) + index) * self.line_size
-
-                if self.lower:
-                    self.lower.write(victim_addr, origine=self.core_id, id_=id_)
-                elif self.memory:
-                    self.memory.request(MemoryRequest(origine, self.memory.vars.global_cycle, 'write', victim_addr, id_=id_))
-
-
-            victim_line.valid = True
-            victim_line.tag = tag
-            victim_line.dirty = self.write_back
-            plru.update_on_access(victim_idx)
-        else:
-            if self.lower:
-                self.lower.write(addr, origine=self.core_id, id_=id_)
-            elif self.memory:
-                self.memory.request(MemoryRequest(origine, self.memory.vars.global_cycle, 'write', addr, id_=id_))
-
-        self.vars.complete_instruction(id_, self.vars.global_cycle)
-    def stats(self):
-        total = self.hits + self.misses
-        denominator = self.miss_tab + self.hit_tab
-        denominator[denominator==0] = -1
-        self.cache_miss_tab = self.miss_tab/(denominator)
-        self.cache_miss_tab[self.cache_miss_tab<=0] = 0
-        return {
-            'level': self.level,
-            'hits': self.hits,
-            'hits_read': self.hits_read,
-            'hits_write': self.hits_write,
-            'misses_read': self.misses_read,
-            'misses_write': self.misses_write,
-            'misses': self.misses,
-            'miss_rate': self.misses / total if total else 0,
-            'cache_miss_detailled':self.miss_tab,#number of miss at every locaation
-        }
 
 # ---------------------------------------------------------
 # Multi-level cache hierarchy for a core
