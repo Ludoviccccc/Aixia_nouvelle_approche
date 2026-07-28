@@ -92,6 +92,10 @@ class Experiment:
 
         self.cache_stats_core_0 = self.mem_core0.stats()
         self.cache_stats_core_1 = self.mem_core1.stats()
+
+
+
+        interference_stats = self.vars.get_interference_summary()
         if display_stats:
             # Report results
             print("\n--- Simulation Stats ---")
