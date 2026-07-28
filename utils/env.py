@@ -86,7 +86,8 @@ class Environment:
             #'cache_hit_l2':self.var.hits['L2'],
             #'cache_misses_l1':self.var.misses['L1'],
             'cache_misses_l2':self.var.misses['L2'],
-            'time_core0':out['time_core0']
+            'time_core0':out['time_core0'],
+            'ddr_stats':experiment.ddr_stats,
             }
         return obs
     def __call__(self,program:dict):
