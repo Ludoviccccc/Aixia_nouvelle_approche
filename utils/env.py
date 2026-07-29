@@ -22,18 +22,18 @@ class Environment:
         self.max_cycle_simulation = max_cycle_simulation
         self.bandwidth_window_size = bandwidth_window_size
     def run_experiment(self,program:dict):
-        self.var = Var(max_instructions = self.max_instructions,
+        var = Var(max_instructions = self.max_instructions,
                        max_cycle = self.max_cycle_simulation,
                        bandwidth_window_size = self.bandwidth_window_size)
-        experiment = Experiment(self.var,
+        experiment = Experiment(var,
                                 num_banks=self.num_banks,
                                 num_addr = self.num_addr)
         experiment.load_instr(core0_inst = program['core0'],core1_inst =program['core1'])
         out = experiment.simulate(self.max_cycle_simulation)
         
         
-        results =  self.var.analyze_bandwidth_per_core()
-        make_empty_dict = lambda:{window:0 for window in range(self.max_cycle_simulation//self.var.bandwidth_window_size)}
+        results =  var.analyze_bandwidth_per_core()
+        make_empty_dict = lambda:{window:0 for window in range(self.max_cycle_simulation//var.bandwidth_window_size)}
         bandwidth_core0_bus = make_empty_dict() 
         bandwidth_core1_bus = make_empty_dict() 
         bandwidth_core0_ddr = make_empty_dict() 
@@ -68,7 +68,7 @@ class Environment:
                 bandwidth_core1_ddr_read[id_] = results['cores'][1]['ddr']['windows'][id_]['read_commands']
 
         obs = {
-            #'cache_hit_l1':self.var.hits['L1'],
+            #'cache_hit_l1':var.hits['L1'],
             'bus_bandwidth_core_0':bandwidth_core0_bus,
             'bus_bandwidth_core_1':bandwidth_core1_bus,
             'ddr_bandwidth_core_0':bandwidth_core0_ddr,
@@ -83,12 +83,13 @@ class Environment:
             'bus_bandwidth_core_1_read':bandwidth_core1_bus_read,
             'ddr_bandwidth_core_0_read':bandwidth_core0_ddr_read,
             'ddr_bandwidth_core_1_read':bandwidth_core1_ddr_read,
-            #'cache_hit_l2':self.var.hits['L2'],
-            #'cache_misses_l1':self.var.misses['L1'],
-            'cache_misses_l2':self.var.misses['L2'],
+            #'cache_hit_l2':var.hits['L2'],
+            #'cache_misses_l1':var.misses['L1'],
+            'cache_misses_l2':var.misses['L2'],
             'time_core0':out['time_core0'],
-            'ddr_stats':experiment.ddr_stats,
             }
+        obs = obs | {'misses_ddr':experiment.misses_ddr} | {'hits_ddr':experiment.hits_ddr}
+
         return obs
     def __call__(self,program:dict):
         output_core0_iso = self.run_experiment({'core0':program['core0'],'core1':[]})
@@ -112,4 +113,10 @@ class Environment:
 
         output['time_core0_iso'] = output_core0_iso['time_core0']
         output['time_core0_core1'] = output_core0_core1['time_core0']
+        output['hits_ddr'] = {}
+        output['misses_ddr'] = {}
+        for bank in range(self.num_banks):
+            for row in range(self.num_banks//8 +1):
+                output['hits_ddr'][(bank,row)] = output_core0_core1['hits_ddr'][(bank,row)] - output_core0_iso['hits_ddr'][(bank,row)]
+                output['misses_ddr'][(bank,row)] = output_core0_core1['misses_ddr'][(bank,row)] - output_core0_iso['misses_ddr'][(bank,row)]
         return output

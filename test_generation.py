@@ -68,7 +68,7 @@ if __name__=='__main__':
     N_init = 1000 #Number of warming iterations
     print_freq = 100 #print iteration step every print_freq
     num_mutations = 1 #Nb of mutations in goal achievement strategy
-    address_x = 5
+    address_x = None
     test_mode =  True
 
 
@@ -99,17 +99,19 @@ if __name__=='__main__':
     if test_mode:
         g = lambda: addr_management(address_x=address_x) 
         p1 = g()
+        print(len(p1['core0']))
+        print(len(p1['core1']))
         output = environment(p1)
-        mutation  = mutation_method(p1)
-        var = Var()
-        experiment = Experiment(var)
-        experiment.load_instr(p1['core0'],p1['core1'])
-        experiment.simulate(400)
-        print(experiment.ddr_stats)
-        #print('mutation len core 0', len(mutation['core0'].keys()))
-        #print('mutation len core 1', len(mutation['core1'].keys()))
-        #results = environment.var.analyze_bandwidth_per_core()
         print(output)
+        #mutation  = mutation_method(p1)
+        #var = Var()
+        #experiment = Experiment(var,num_banks=4)
+        #experiment.load_instr(p1['core0'],p1['core1'])
+        #experiment.load_instr([],p1['core1'])
+        #experiment.load_instr(p1['core0'],[])
+        #experiment.simulate(400)
+        #print('miss',experiment.misses_ddr)
+        #print('hits',experiment.hits_ddr)
     else:
         #Explorer for random exploration
         explorer_random = randomexploration(N_init,environment,lambda: addr_management.generate_instruction_sequence(address_x=address_x),history,print_freq=print_freq)

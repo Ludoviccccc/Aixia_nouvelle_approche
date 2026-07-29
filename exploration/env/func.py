@@ -12,8 +12,9 @@ class Experiment:
         self.vars = vars_
         self.num_banks = num_banks
         self.num_addr  = num_addr 
-        self.num_rows = self.num_addr//16+1
-        self.ddr_stats = {}
+        self.num_rows = self.num_addr//8+1
+        self.misses_ddr = {(bank,row):0 for row in range(self.num_rows) for bank in range(self.num_banks)}
+        self.hits_ddr = {(bank,row):0 for row in range(self.num_rows) for bank in range(self.num_banks)}
         self.time_values = {'core0':[0],'core1':[0]}
         # Instantiate the DDR Memory
         self.ddr_memory_physical = DDRMemory(num_banks=self.num_banks,vars_ = self.vars)
@@ -63,13 +64,11 @@ class Experiment:
                 self.time_values['core1'].append(values['core1'])
     def add_values(self,ddr_stats):
         if type(ddr_stats)!=type(None):
-            for key in ddr_stats:
-                if key in self.ddr_stats and key!='completion_time':
-                    self.ddr_stats[key].append(ddr_stats[key])
-                elif key =='completion_time':
-                    self.time_values[['core0','core1'][ddr_stats['core']]].append(ddr_stats[key])
+            if 'bank' in ddr_stats:
+                if ddr_stats['status'] ==-1:
+                    self.misses_ddr[(ddr_stats['bank'],ddr_stats['row'])] += 1
                 else:
-                    self.ddr_stats[key]=[ddr_stats[key]]
+                    self.hits_ddr[(ddr_stats['bank'],ddr_stats['row'])] += 1
     def load_instr(self, core0_inst, core1_inst):
         self.core0.load_instr(core0_inst)
         self.core1.load_instr(core1_inst)
