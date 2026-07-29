@@ -11,7 +11,7 @@ from utils.mix_interleaving import Mix_sequences_interleaved
 from utils.goal_generation import GoalGenerator
 from utils.imgep import IMGEP
 from utils.env import Environment
-
+from simulator.sim070726 import Var
 from exploration.env.func import Experiment
 
 import json
@@ -50,7 +50,7 @@ if __name__=='__main__':
     simu_params = {
     "min_address" : 0,
     "max_address" : 19,
-    "max_instructions" : 10,
+    "max_instructions" : 50,
     }
 
 
@@ -101,6 +101,11 @@ if __name__=='__main__':
         p1 = g()
         output = environment(p1)
         mutation  = mutation_method(p1)
+        var = Var()
+        experiment = Experiment(var)
+        experiment.load_instr(p1['core0'],p1['core1'])
+        experiment.simulate(400)
+        print(experiment.ddr_stats)
         #print('mutation len core 0', len(mutation['core0'].keys()))
         #print('mutation len core 1', len(mutation['core1'].keys()))
         #results = environment.var.analyze_bandwidth_per_core()
