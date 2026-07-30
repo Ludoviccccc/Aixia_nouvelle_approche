@@ -67,9 +67,9 @@ class Var:
             'status': [],
             'id':[],
         }
-        make_empty_dict =  lambda: {window:0 for window in range(max_cycle//self.bandwidth_window_size)}
-        self.hits = {"type":"hit","L1":make_empty_dict(),"L2":make_empty_dict()}
-        self.misses = {"type":"miss","L1":make_empty_dict(),"L2":make_empty_dict()}
+        self.make_empty_dict =  lambda: {window:0 for window in range(max_cycle//self.bandwidth_window_size)}
+        self.hits = {"type":"hit","L1":self.make_empty_dict(),"L2":self.make_empty_dict()}
+        self.misses = {"type":"miss","L1":self.make_empty_dict(),"L2":self.make_empty_dict()}
         self.events = {"L1":{},"L2":{}}
         self.count = 0
         
@@ -887,6 +887,7 @@ class DDRMemoryController:
         return {'completion_time': completion_time,
                 'row': row,
                 'bank': bank,
+                'cycle':self.vars.global_cycle,
                 'status': row_status,
                 'core':best_req.core_id,
                 'delay': delay,
