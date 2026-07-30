@@ -88,7 +88,7 @@ class Environment:
             'cache_misses_l2':var.misses['L2'],
             'time_core0':out['time_core0'],
             }
-        obs = obs | {'misses_ddr':experiment.misses_ddr} | {'hits_ddr':experiment.hits_ddr}
+        obs = obs | {'misses_ddr':experiment.misses_ddr_time} | {'hits_ddr':experiment.hits_ddr_time}
 
         return obs
     def __call__(self,program:dict):
@@ -113,10 +113,7 @@ class Environment:
 
         output['time_core0_iso'] = output_core0_iso['time_core0']
         output['time_core0_core1'] = output_core0_core1['time_core0']
-        output['hits_ddr'] = {}
-        output['misses_ddr'] = {}
-        for bank in range(self.num_banks):
-            for row in range(self.num_banks//8 +1):
-                output['hits_ddr'][(bank,row)] = output_core0_core1['hits_ddr'][(bank,row)] - output_core0_iso['hits_ddr'][(bank,row)]
-                output['misses_ddr'][(bank,row)] = output_core0_core1['misses_ddr'][(bank,row)] - output_core0_iso['misses_ddr'][(bank,row)]
+        output['misses_ddr_diff'] = {key:output_core0_core1['misses_ddr'][key] - output_core0_iso['misses_ddr'][key] for key in output_core0_core1['misses_ddr']}
+        output['hits_ddr_diff'] = {key:output_core0_core1['hits_ddr'][key] - output_core0_iso['hits_ddr'][key] for key in output_core0_core1['hits_ddr']}
+
         return output
