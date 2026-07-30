@@ -15,6 +15,8 @@ class Experiment:
         self.num_rows = self.num_addr//8+1
         self.misses_ddr = {(bank,row):0 for row in range(self.num_rows) for bank in range(self.num_banks)}
         self.hits_ddr = {(bank,row):0 for row in range(self.num_rows) for bank in range(self.num_banks)}
+        self.misses_ddr_time = self.vars.make_empty_dict()
+        self.hits_ddr_time = self.vars.make_empty_dict()
         self.time_values = {'core0':[0],'core1':[0]}
         # Instantiate the DDR Memory
         self.ddr_memory_physical = DDRMemory(num_banks=self.num_banks,vars_ = self.vars)
@@ -67,8 +69,10 @@ class Experiment:
             if 'bank' in ddr_stats:
                 if ddr_stats['status'] ==-1:
                     self.misses_ddr[(ddr_stats['bank'],ddr_stats['row'])] += 1
+                    self.misses_ddr_time[ddr_stats['cycle']//self.vars.bandwidth_window_size] +=1
                 else:
                     self.hits_ddr[(ddr_stats['bank'],ddr_stats['row'])] += 1
+                    self.hits_ddr_time[ddr_stats['cycle']//self.vars.bandwidth_window_size] +=1
     def load_instr(self, core0_inst, core1_inst):
         self.core0.load_instr(core0_inst)
         self.core1.load_instr(core1_inst)
