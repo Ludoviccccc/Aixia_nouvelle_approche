@@ -30,21 +30,8 @@ class Environment:
                                 num_addr = self.num_addr)
         experiment.load_instr(core0_inst = program['core0'],core1_inst =program['core1'])
         out = experiment.simulate(self.max_cycle_simulation)
-        
-        
-
-        obs = {
-            'cache_misses_l2':self.var.misses['L2'],
-            'time_core0':out['time_core0']
-            }
+        obs = self.var.get_interference_summary()['events']
         return obs
     def __call__(self,program:dict):
-        output_core0_iso = self.run_experiment({'core0':program['core0'],'core1':[]})
-        output_core0_core1 = self.run_experiment(program)
-        output = {}
-        output['cache_misses_l2_diff'] = {key:output_core0_core1['cache_misses_l2'][key] - output_core0_iso['cache_misses_l2'][key] for key in output_core0_core1['cache_misses_l2']}
-
-
-        output['time_core0_iso'] = output_core0_iso['time_core0']
-        output['time_core0_core1'] = output_core0_core1['time_core0']
+        output = self.run_experiment(program)
         return output
