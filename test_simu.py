@@ -16,6 +16,7 @@ from exploration.env.func import Experiment
 from simulator.sim070726 import *
 import json
 import sys
+import time
 def print_dict(dict_):
     for key in dict_:
         print(key,dict_[key])
@@ -64,12 +65,12 @@ if __name__=='__main__':
     #IMGEP parameters
     capacity = 10000 #History capacity
     k = 2 #Number of neighbors in goal achievement strategy
-    N = 10000 #Number of imgep iterations
-    N_init = 1000 #Number of warming iterations
+    N = 1000 #Number of imgep iterations
+    N_init = 100 #Number of warming iterations
     print_freq = 100 #print iteration step every print_freq
     num_mutations = 1 #Nb of mutations in goal achievement strategy
     address_x = 5
-    test_mode =  True
+    test_mode =  False
 
 
     #Envionment class 
@@ -96,27 +97,30 @@ if __name__=='__main__':
 
     
 
+
+
     if test_mode:
         g = lambda: addr_management(address_x=address_x) 
         p1 = g()
-        var = Var(max_instructions=100,
-                max_cycle = 200)
-        experiment = Experiment(var)
-        experiment.load_instr(core0_inst = p1['core0'],core1_inst =p1['core1'])
-        #output = environment(p1)
-        out = experiment.simulate(600)
-        ddr_stats = experiment.ddr_controller.get_ddr_stats()
-        interference_summary = var.get_interference_summary()
+        output = environment({'core0':p1['core0'],'core1':p1['core1']})
+        start_time = time.time()
+        for j in range(100):
+            p = g()
+            output = environment(p)
+            history.store(p,output)
+        print(f'duration: {time.time() - start_time}')
+        #print(history.memory_observation['ddr_interference'])
+        for if_type in history.memory_observation:
+            tab = np.array(list(history.memory_observation[if_type].values()))
+        
+        goals = goalgenerator(3)
+        candidate = policy(goals,history)
+        print('candidate keys',candidate.keys())
+        #print(goals[0])
 
-        print(f"DDR Bank Conflicts: {ddr_stats['total_bank_conflicts']}")
-        print(f"Row Hit Rate: {ddr_stats['row_hit_rate']:.2%}")
-        #mutation  = mutation_method(p1)
-        #print('mutation len core 0', len(mutation['core0'].keys()))
-        #print('mutation len core 1', len(mutation['core1'].keys()))
-        #results = environment.var.analyze_bandwidth_per_core()
     else:
         #Explorer for random exploration
-        explorer_random = randomexploration(N_init,environment,lambda: addr_management.generate_instruction_sequence(address_x=address_x),history,print_freq=print_freq)
+        explorer_random = randomexploration(N_init,environment,lambda: addr_management(address_x=address_x),history,print_freq=print_freq)
 
 
         #IMGEP explorer

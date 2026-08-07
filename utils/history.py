@@ -21,34 +21,31 @@ class History:
         return self.__dict__== other.__dict__
     def __getitem__(self,id_):
         return self.memory_parameter[id_]
-    def as_tab(self):
+    def as_tab(self,if_type):
+        '''
+        extracts values as an np.array for the considered type of if.
+        the last columns corresponds to the id of the program
+        Entry:
+        type_if:'str'. type of interference i.e key of History.memory_observation
+        '''
         if self._j==0:
             raise TypeError("no element stored yet")
-        return self.numpy_view[:self._j]
+        return np.array(list(self.memory_observation[if_type].values()))
     def __len__(self):
         return len(self.memory_parameter)
-    def store(self,sample:dict,obs:dict):
+    def store(self,parameter:dict,obs:dict):
         if self._j>=self.capacity:
             raise Exception("Exceeded capacity")
-        self.memory_parameter.append(sample)
-        tab = []
-        for key in obs:
-            if not type(obs[key])==int:
-                object_ = list(obs[key].values())
-            else:
-                object_ = obs[key]
-            if key not in self.unused:
-                if type(object_)==int:
-                    tab += [object_]
-                else:
-                    tab += object_
-            if key in self.memory_observation:
-                self.memory_observation[key].append(object_)
-            else:
-                self.memory_observation[key] = [object_]
-        if self._j ==0:
-            self.numpy_view = np.zeros((self.capacity,len(tab)))
-        self.numpy_view[self._j] = tab
+        self.memory_parameter.append(parameter)
+        for if_type in obs:
+            if if_type in self.memory_observation:
+                for key in self.memory_observation[if_type]:
+                    if key!='idx':
+                        self.memory_observation[if_type][key] += obs[if_type][key]
+                self.memory_observation[if_type]['idx'] += [self._j]*len(obs[if_type][list(obs[if_type].keys())[0]])
+            else:                             
+                self.memory_observation[if_type] = obs[if_type]
+                self.memory_observation[if_type]['idx'] = [self._j]*len(obs[if_type][list(obs[if_type].keys())[0]])
         self._j+=1
     def content(self):
         return {

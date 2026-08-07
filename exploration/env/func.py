@@ -31,11 +31,12 @@ class Experiment:
             vars_=self.vars)     
 
         # Create interconnect, connected to the DDR Memory Controller
-        self.interconnect = Interconnect(self.ddr_controller, delay=5, bandwidth=4,vars_=self.vars)
+        self.interconnect = Interconnect(self.ddr_controller, delay=10, bandwidth=1,vars_=self.vars)
 
         # Create cache configurations
         l1_conf = {'size': 32, 'line_size': 4, 'assoc': 2}
         l2_conf = {'size': 512, 'line_size': 4, 'assoc': 16}
+        l2_conf = {'size': 64, 'line_size': 4, 'assoc': 4}
 
 
         # Create shared L2 Cache, connected to the Interconnect
@@ -108,8 +109,8 @@ class Experiment:
             print('core0',dict0)
             print('core1',dict1)
             print('shared cache L2',display_dict)
-            print('ddr hits', self.hits_tab)
-            print('ddr miss', self.miss_tab)
+        #print(self.ddr_stats)
         return {
                 'time_core0':max(self.time_values['core0']),
-                'time_core1':max(self.time_values['core1'])}
+                'time_core1':max(self.time_values['core1']),
+                }

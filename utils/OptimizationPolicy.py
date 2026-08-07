@@ -25,35 +25,37 @@ class OptimizationPolicykNN:
         Outputs candidate parameter for reaching `goal`
         '''
         closest_parameters = self.select_closest_parameters(goal,H) 
-        output = closest_parameters 
-        if self.k>1:
-            output = self.mixing_method(output)
-        else:
-            output = output[0]
-        output = self.mutation_method(output)
-        return output
+        programs_to_mix = []
+        for if_type in closest_parameters:
+            if self.k>1:
+                output = self.mixing_method(closest_parameters[if_type])
+                programs_to_mix.append(output)
+            else:
+                programs_to_mix.append(output)
+        candidate = self.mixing_method(programs_to_mix)
+        return candidate
 
-    def feature2closest_parameter(self,goal:np.ndarray,features:dict)->np.ndarray:
+    def feature2closest_parameter(self,goal:np.ndarray,history:History)->np.ndarray:
         '''
         selects the `self.k` closest parameter outcome indices from the database to the desired goal
         using the loss function `self.loss`
         '''
-        if self.representation:
-            d = self.distance_method(goal,features,self.representation.weights)
-        else:
-            d = self.distance_method(goal,features)
-        idx = np.argsort(d)[:self.k]
+        idx = {}
+        for elem in goal:
+            if_type = elem[0] 
+            goal_elem = elem[2].reshape((-1,1))# (D,1)
+            features = history.as_tab(if_type)[:-1] #(D,Nb of found if)
+            idx_elem = np.argsort(np.sum((goal_elem-features)**2,axis=0)) #(D,Nb of found if)
+            idx_elem = [history.memory_observation[if_type]['idx'][j] for j in idx_elem]
+            idx[elem[0]] = idx_elem[:self.k]
         return idx
 
 
     def select_closest_parameters(self,goal: dict,history:History)->dict:
         assert len(history)>0, "history empty"
-        features = history.as_tab()
-        if self.representation:
-            features = self.representation(features)
-        idx = self.feature2closest_parameter(goal,features)
-
-        output = []
-        for id_ in idx:
-            output.append(history[id_])
-        return output
+        idx = self.feature2closest_parameter(goal,history)
+        closest_codes_per_if_type = {elem[0]:[] for elem in goal}
+        for if_type in closest_codes_per_if_type:
+            for id_ in idx[if_type]:
+                closest_codes_per_if_type[if_type].append(history[id_])
+        return closest_codes_per_if_type

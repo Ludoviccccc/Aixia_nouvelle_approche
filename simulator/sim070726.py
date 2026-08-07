@@ -28,7 +28,6 @@ class Var:
             bandwidth_window_size:int=10,
                       ):
         self.cache_interferences = {
-            'L1': [],  # List of interference events
             'L2': []   # List of interference events
         }
         # Bus contention tracking
@@ -46,13 +45,12 @@ class Var:
         # Cross-core eviction tracking
         # Maps (level, set_index, tag) -> (core_id, cycle, instruction_id)
         self.cache_occupancy = {
-            'L1': {},  # (set_index, tag) -> {'core_id': core_id, 'cycle': cycle, 'instr_id': instr_id}
             'L2': {}   # (set_index, tag) -> {'core_id': core_id, 'cycle': cycle, 'instr_id': instr_id}
         }
         
         # Interference statistics summary
         self.interference_stats = {
-            'cache_interferences': {'L1': 0, 'L2': 0},
+            'cache_interferences': {'L2': 0},
             'bus_contention': 0,
             'ddr_bank_conflicts': 0,
             'ddr_scheduler_interference': 0,
@@ -424,7 +422,7 @@ class MemoryRequest:
 # - Using a heapqueue ensures that all items are and remain sorted
 #   according to their ready_time (and req)
 class Interconnect:
-    def __init__(self, memory_controller, delay=5, bandwidth=4, vars_=None):
+    def __init__(self, memory_controller, delay=5, bandwidth=2, vars_=None):
         self.vars = vars_
         self.memory_controller = memory_controller
         self.queue = []               # Queue of pending memory requests (ready_time, request)
@@ -460,6 +458,8 @@ class Interconnect:
         # If no requests ready, return
         if not ready_requests:
             return 0
+        #if len(ready_requests)>1:
+        #    print('ready_requests len',len(ready_requests))
 
         # Step 2: Check for contention
         # Contention occurs when more requests are ready than bandwidth allows
@@ -936,7 +936,7 @@ class CacheLevel:
     # Handles cache read request
     # Update the CacheLevel.read() method to log lower level accesses:
 
-    def read(self, addr, callback, origine=None, id_=None):
+    def read(self, addr, callback, origin=None, id_=None):
         index = self._index(addr)
         tag = self._tag(addr)
         cache_set = self.sets[index]
@@ -986,8 +986,8 @@ class CacheLevel:
         victim_idx = plru.get_victim()
         victim_line = cache_set[victim_idx]
    
-
-        self._log_cross_core_eviction(index, tag, victim_idx, id_)    
+        if self.level =='L2':
+            self._log_cross_core_eviction(index, tag, victim_idx,core_id_origin=origin,id_= id_)    
 
 
         # Log if this is a clean or dirty eviction
@@ -995,12 +995,17 @@ class CacheLevel:
             victim_addr = ((victim_line.tag * self.num_sets) + index) * self.line_size
     
         def lower_cb():
+            # ========== NEW: Log cross‑core eviction and update occupancy ==========
+            # This must be done before we overwrite the victim line.
+            if self.level =='L2':
+                self._log_cross_core_eviction(index, tag, victim_idx,core_id_origin=origin,id_= id_)    
+             # ======================================================================
             if victim_line.valid and victim_line.dirty and self.write_back:
                 victim_addr = ((victim_line.tag * self.num_sets) + index) * self.line_size
                 if self.lower:
-                    self.lower.write(victim_addr, origine=self.core_id, id_=id_)
+                    self.lower.write(victim_addr, origin=self.core_id, id_=id_)
                 elif self.memory:
-                    self.memory.request(MemoryRequest(origine, self.memory.vars.global_cycle, 'write', victim_addr, callback=None, id_=id_))
+                    self.memory.request(MemoryRequest(origin, self.memory.vars.global_cycle, 'write', victim_addr, callback=None, id_=id_))
     
             victim_line.valid = True
             victim_line.tag = tag
@@ -1010,11 +1015,11 @@ class CacheLevel:
     
     
         if self.lower:
-            self.lower.read(addr, lower_cb, origine=self.core_id, id_=id_)
+            self.lower.read(addr, lower_cb, origin=self.core_id, id_=id_)
         elif self.memory:
-            self.memory.request(MemoryRequest(origine, self.memory.vars.global_cycle, 'read', addr, lower_cb, id_=id_))
+            self.memory.request(MemoryRequest(origin, self.memory.vars.global_cycle, 'read', addr, lower_cb, id_=id_))
     # Handles cache write request
-    def write(self, addr, origine=None, id_=None):
+    def write(self, addr, origin=None, id_=None):
         index = self._index(addr)
         tag = self._tag(addr)
         cache_set = self.sets[index]
@@ -1032,9 +1037,9 @@ class CacheLevel:
 
                 if not self.write_back:
                     if self.lower:
-                        self.lower.write(addr, origine=self.core_id, id_=id_)
+                        self.lower.write(addr, origin=self.core_id, id_=id_)
                     elif self.memory:
-                        self.memory.request(MemoryRequest(origine, self.memory.vars.global_cycle, 'write', addr, id_=id_))
+                        self.memory.request(MemoryRequest(origin, self.memory.vars.global_cycle, 'write', addr, id_=id_))
 
                 self.vars.log_event(
                     type_="hit",
@@ -1068,15 +1073,16 @@ class CacheLevel:
             victim_idx = plru.get_victim()
             victim_line = cache_set[victim_idx]
 
-            self._log_cross_core_eviction(index, tag, victim_idx, id_)
+            if self.level =='L2':
+                self._log_cross_core_eviction(index, tag, victim_idx,core_id_origin=origin,id_= id_)    
 
             if victim_line.valid and self.write_back and victim_line.dirty:
                 victim_addr = ((victim_line.tag * self.num_sets) + index) * self.line_size
 
                 if self.lower:
-                    self.lower.write(victim_addr, origine=self.core_id, id_=id_)
+                    self.lower.write(victim_addr, origin=self.core_id, id_=id_)
                 elif self.memory:
-                    self.memory.request(MemoryRequest(origine, self.memory.vars.global_cycle, 'write', victim_addr, id_=id_))
+                    self.memory.request(MemoryRequest(origin, self.memory.vars.global_cycle, 'write', victim_addr, id_=id_))
 
 
             victim_line.valid = True
@@ -1085,9 +1091,9 @@ class CacheLevel:
             plru.update_on_access(victim_idx)
         else:
             if self.lower:
-                self.lower.write(addr, origine=self.core_id, id_=id_)
+                self.lower.write(addr, origin=self.core_id, id_=id_)
             elif self.memory:
-                self.memory.request(MemoryRequest(origine, self.memory.vars.global_cycle, 'write', addr, id_=id_))
+                self.memory.request(MemoryRequest(origin, self.memory.vars.global_cycle, 'write', addr, id_=id_))
 
     def stats(self):
         total = self.hits + self.misses
@@ -1106,7 +1112,7 @@ class CacheLevel:
             'miss_rate': self.misses / total if total else 0,
             'cache_miss_detailled':self.miss_tab,#number of miss at every locaation
         }
-    def _log_cross_core_eviction(self, index, tag, victim_idx, id_=None):
+    def _log_cross_core_eviction(self, index, tag, victim_idx,core_id_origin, id_=None):
         """Check if the evicted line belongs to another core and log interference"""
         set_idx = index
         victim_line = self.sets[index][victim_idx]
@@ -1117,9 +1123,8 @@ class CacheLevel:
             if key in self.vars.cache_occupancy[self.level]:
                 owner_info = self.vars.cache_occupancy[self.level][key]
                 evicted_core_id = owner_info['core_id']
-                
                 # If the evicted line belongs to a different core, it's interference
-                if evicted_core_id != self.core_id:
+                if evicted_core_id != core_id_origin:
                     evicted_addr = ((victim_line.tag * self.num_sets) + set_idx) * self.line_size
                     
                     # Get the address that caused the eviction
@@ -1131,7 +1136,7 @@ class CacheLevel:
                         tag=victim_line.tag,
                         evicted_core_id=evicted_core_id,
                         evicted_instr_id=owner_info.get('instr_id', None),
-                        causing_core_id=self.core_id,
+                        causing_core_id=core_id_origin,
                         causing_instr_id=id_,
                         evicted_addr=evicted_addr,
                         causing_addr=causing_addr
@@ -1140,13 +1145,13 @@ class CacheLevel:
                 # Remove from occupancy tracking
                 del self.vars.cache_occupancy[self.level][key]
             
-            # Update occupancy with new line
-            new_key = (set_idx, tag)
-            self.vars.cache_occupancy[self.level][new_key] = {
-                'core_id': self.core_id,
-                'cycle': self.vars.global_cycle,
-                'instr_id': id_
-            }
+        # Update occupancy with new line
+        new_key = (set_idx, tag)
+        self.vars.cache_occupancy[self.level][new_key] = {
+            'core_id': core_id_origin,
+            'cycle': self.vars.global_cycle,
+            'instr_id': id_
+        }
 
 
 
@@ -1165,11 +1170,11 @@ class MultiLevelCache:
 
     # Read operation (starts at L1 level)
     def read(self, addr, callback,id_):
-        self.l1.read(addr, callback,id_=id_)
+        self.l1.read(addr, callback,origin=self.core_id,id_=id_)
 
     # Write operation (starts at L1 level)
     def write(self, addr,id_):
-        self.l1.write(addr,id_=id_)
+        self.l1.write(addr,origin=self.core_id,id_=id_)
 
     def stats(self):
         return {
