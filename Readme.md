@@ -21,4 +21,4 @@ Throughout the exploration of the simulator, our autothelic agent targets combin
 The intrinsically motivated goal exploration process allows the use of knowledge on the output space of the complex systems to built candidate parameters that help increasing the discovery of the outputs in the output space.
 For our system, we'll use this algorithm that can be illustrated as follow:
 ![Alt text](illustrations/simulator_new.png)
-![Alt text](illustrations/illustration_method.pdf)
+![Alt text](illustrations/illustration_method.png)
