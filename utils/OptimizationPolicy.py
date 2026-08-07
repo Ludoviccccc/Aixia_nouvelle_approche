@@ -31,7 +31,7 @@ class OptimizationPolicykNN:
                 output = self.mixing_method(closest_parameters[if_type])
                 programs_to_mix.append(output)
             else:
-                programs_to_mix.append(output)
+                programs_to_mix.append(closest_parameters[if_type][0])
         candidate = self.mixing_method(programs_to_mix)
         return candidate
 

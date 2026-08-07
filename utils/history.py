@@ -12,8 +12,6 @@ class History:
         self.capacity = capacity
         self.memory_observation ={} 
         self._j = 0
-        self.names = []
-        self.numpy_view = 0
         self.rand_id = random.uniform(0,1)
         self.unused = unused
 
@@ -51,7 +49,6 @@ class History:
         return {
                 "memory_parameter":self.memory_parameter,
                 "memory_observation":self.memory_observation,
-                "numpy_view":self.numpy_view,
                 }
     def save_pickle(self, name:str=None):
         k = 0
