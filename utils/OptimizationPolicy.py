@@ -25,14 +25,20 @@ class OptimizationPolicykNN:
         Outputs candidate parameter for reaching `goal`
         '''
         closest_parameters = self.select_closest_parameters(goal,H) 
-        programs_to_mix = []
-        for if_type in closest_parameters:
-            if self.k>1:
-                output = self.mixing_method(closest_parameters[if_type])
-                programs_to_mix.append(output)
-            else:
-                programs_to_mix.append(closest_parameters[if_type][0])
-        candidate = self.mixing_method(programs_to_mix)
+        if goal['type']=='precise_if':
+            programs_to_mix = []
+            for if_type in closest_parameters:
+                if self.k>1:
+                    output = self.mixing_method(closest_parameters[if_type])
+                    programs_to_mix.append(output)
+                else:
+                    programs_to_mix.append(closest_parameters[if_type][0])
+        else:
+            programs_to_mix = closest_parameters
+        if len(programs_to_mix)>1:
+            candidate = self.mixing_method(programs_to_mix)
+        else:
+            candidate = programs_to_mix[0]
         candidate = self.mutation_method(candidate)
         return candidate
 
@@ -42,19 +48,30 @@ class OptimizationPolicykNN:
         using a loss function.
         '''
         closest_obs = {}
-        for elem in goal:
-            if_type = elem[0] 
-            goal_elem = elem[2].reshape((-1,1))# (D,1)
-            features = history.as_tab(if_type)[:-1] #(D,Nb of found if)
-            idx_elem = np.argsort(np.sum((goal_elem-features)**2,axis=0)) #(D,Nb of found if)
-            obs = [{key:history.memory_observation[elem[0]][key][id_] for key in history.memory_observation[elem[0]].keys()} for id_ in idx_elem[:self.k]]
-            idx_elem = [history.memory_observation[if_type]['idx'][j] for j in idx_elem]
-            closest_obs[elem[0]] = {'idx':idx_elem[:self.k],'obs':obs}
-        return closest_obs
+        if goal['type'] =='precise_if':
+            for elem in goal['goal']:
+                if_type = elem[0] 
+                goal_elem = elem[2].reshape((-1,1))# (D,1)
+                features = history.as_tab(if_type)[:-1] #(D,Nb of found if)
+                idx_elem = np.argsort(np.sum((goal_elem-features)**2,axis=0)) #(D,Nb of found if)
+                obs = [{key:history.memory_observation[elem[0]][key][id_] for key in history.memory_observation[elem[0]].keys()} for id_ in idx_elem[:self.k]]
+                idx_elem = [history.memory_observation[if_type]['idx'][j] for j in idx_elem]
+                closest_obs[elem[0]] = {'idx':idx_elem[:self.k],'obs':obs}
+            return closest_obs
+        else:
+            features = history.memory_components
+            idx_elem = np.argsort(np.sum((goal['goal']-features)**2,axis=0))[:self.k] #(D,Nb of found if)
+            return idx_elem
+
 
 
     def select_closest_parameters(self,goal: dict,history:History)->dict:
         assert len(history)>0, "history empty"
-        closest_obs = self.feature2closest_observations(goal,history)
-        closest_codes_per_if_type = {if_type[0]:[history[id_] for id_ in closest_obs[if_type[0]]['idx']] for if_type in goal}
-        return closest_codes_per_if_type
+        if goal['type']=='precise_if':
+            closest_obs = self.feature2closest_observations(goal,history)
+            closest_codes_per_if_type = {if_type[0]:[history[id_] for id_ in closest_obs[if_type[0]]['idx']] for if_type in goal['goal']}
+            return closest_codes_per_if_type
+        else:
+            closest_idx = self.feature2closest_observations(goal,history)
+            closest_parameters = [history[id_] for id_ in closest_idx]
+            return closest_parameters

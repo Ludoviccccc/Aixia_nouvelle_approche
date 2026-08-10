@@ -14,6 +14,12 @@ class History:
         self._j = 0
         self.rand_id = random.uniform(0,1)
         self.unused = unused
+        self.components = ['bus_interference',
+                             'ddr_interference',
+                             'ddr_scheduler_interference',
+                             'L2_cache_interference']
+        self.memory_components = []
+
 
     def __eq__(self,other):
         return self.__dict__== other.__dict__
@@ -44,6 +50,10 @@ class History:
             else:                             
                 self.memory_observation[if_type] = obs[if_type]
                 self.memory_observation[if_type]['idx'] = [self._j]*len(obs[if_type][list(obs[if_type].keys())[0]])
+        encod = np.zeros((4,))
+        for j,component in enumerate(self.components):
+            encod[j] = 1
+        self.memory_components.append(encod)
         self._j+=1
     def content(self):
         return {
