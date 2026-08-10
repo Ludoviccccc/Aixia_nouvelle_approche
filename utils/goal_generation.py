@@ -8,7 +8,7 @@ class GoalGenerator:
             representation:Representation=None):
         self.history = history
         self.representation = representation
-    def __call__(self,n:int=1):
+    def __call__(self):
         '''
         defines a goal for imgep.
         Inputs: 
@@ -17,11 +17,12 @@ class GoalGenerator:
         (if_type,keys,values (ndarray))
         '''
         goals = []
+        n = np.random.randint(1,len(self.history.memory_observation.keys()))
         target_if_types = np.random.choice(list(self.history.memory_observation.keys()),n)
         for target_if_type in target_if_types:
             features = self.history.as_tab(target_if_type)[:-1,:]
             min_ = features.min(axis=1)
             max_ = features.max(axis=1)
-            goal = np.random.randint(.1*min_,1*max_)
+            goal = np.random.randint(0,2*max_)
             goals.append((target_if_type,list(self.history.memory_observation[target_if_type].keys())[:-1],goal))
         return goals
