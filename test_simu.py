@@ -69,8 +69,8 @@ if __name__=='__main__':
     N_init = 100 #Number of warming iterations
     print_freq = 100 #print iteration step every print_freq
     num_mutations = 1 #Nb of mutations in goal achievement strategy
-    address_x = 5
-    test_mode =  False
+    address_x = None
+    test_mode =  True
 
 
     #Envionment class 
@@ -109,12 +109,9 @@ if __name__=='__main__':
             output = environment(p)
             history.store(p,output)
         print(f'duration: {time.time() - start_time}')
-        #print(history.memory_observation['ddr_interference'])
-        for if_type in history.memory_observation:
-            tab = np.array(list(history.memory_observation[if_type].values()))
-        
-        goals = goalgenerator(3)
+        goals = goalgenerator()
         candidate = policy(goals,history)
+        print(policy.feature2closest_observations(goals,history))
         print('candidate keys',candidate.keys())
         #print(goals[0])
 
