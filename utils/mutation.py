@@ -46,10 +46,12 @@ class MutationInstructions:
 
         
         for _ in range(self.num_mutations):
-            if self.max_instructions>len(mutated)>2:
+            if self.max_instructions>len(mutated)>3:
                 mutation_type = random.choice([ 'delete', 'modify'])
+                #mutation_type = random.choice(['modify'])
             elif self.max_instructions==len(mutated):
                 mutation_type = random.choice(['delete', 'modify'])
+                #mutation_type = random.choice(['modify'])
             else:
                 mutation_type = random.choice(['add'])
             if mutation_type == 'add' and available_cycles:
