@@ -33,23 +33,24 @@ if __name__=='__main__':
     simu_params = {
     "min_address" : 0,
     "max_address" : 19,
-    "max_instructions" : 50,
+    "max_instructions" : 10,
     }
 
 
 
     #Simulation parameters
     max_cycle_instructions = 60 #Maximum cycle in instructions
-    max_cycle_simulation = 120
+    max_cycle_simulation = 320
     bandwidth_window_size = 20
  
     #IMGEP parameters
     k = 1 #Number of neighbors in goal achievement strategy
-    N = 1000#Number of imgep iterations
+    N = 3000#Number of imgep iterations
     capacity = N #History capacity
-    N_init = 100 #Number of warming iterations
+    N_init = 1000 #Number of warming iterations
     print_freq = 100
-    num_mutations = 3 #Nb of mutations in goal achievement strategy
+    num_mutations = 1 #Nb of mutations in goal achievement strategy
+    chunk_size = 4
 
     #address X to work on
     address_x = None
@@ -57,12 +58,6 @@ if __name__=='__main__':
     folder = 'results'
 
     unused=[
-        'bus_bandwidth_core_0_iso',
-        'bus_bandwidth_core_0_core1',
-        'ddr_bandwidth_core_0_iso',
-        'ddr_bandwidth_core_0_core1',
-        'bus_bandwidth_core_0_diff',
-        'ddr_bandwidth_core_0_diff',
         'time_core0_iso',
         'time_core0_core1']
 
@@ -88,7 +83,7 @@ if __name__=='__main__':
     #optimization policy models
 
     mutation_method = MutationInstructions(num_mutations,**simu_params)
-    mixing_method   = Mix_sequences_interleaved(max_cycle=max_cycle_instructions)
+    mixing_method   = Mix_sequences_interleaved(max_cycle=max_cycle_instructions,chunk_size=chunk_size)
     
     weights = None
     distance_method = DistanceMethod(distance_function,weights=weights)
@@ -108,10 +103,10 @@ if __name__=='__main__':
             representation=representation,
             periode_update_rep=periode_update_rep,
             )
-    history.save_pickle(f'{folder}/imgep_bandwidth_N_{N}_k_{k}')
+    history.save_pickle(f'{folder}/imgep_detailled_if_N_{N}_k_{k}')
 
 
     history_rand = History(capacity=capacity,unused=unused)
     random_explorer = Randomexploration(N,environment,code_generation_method,history_rand)
     random_explorer()
-    history_rand.save_pickle(f'{folder}/random_bandwidth_expl_N_{N}')
+    history_rand.save_pickle(f'{folder}/random_detailled_if_N_{N}')
