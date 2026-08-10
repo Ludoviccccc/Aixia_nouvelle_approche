@@ -33,29 +33,28 @@ class OptimizationPolicykNN:
             else:
                 programs_to_mix.append(closest_parameters[if_type][0])
         candidate = self.mixing_method(programs_to_mix)
+        candidate = self.mutation_method(candidate)
         return candidate
 
-    def feature2closest_parameter(self,goal:np.ndarray,history:History)->np.ndarray:
+    def feature2closest_observations(self,goal:np.ndarray,history:History)->np.ndarray:
         '''
-        selects the `self.k` closest parameter outcome indices from the database to the desired goal
-        using the loss function `self.loss`
+        selects the `self.k` closest observations indices from the database to the desired goal
+        using a loss function.
         '''
-        idx = {}
+        closest_obs = {}
         for elem in goal:
             if_type = elem[0] 
             goal_elem = elem[2].reshape((-1,1))# (D,1)
             features = history.as_tab(if_type)[:-1] #(D,Nb of found if)
             idx_elem = np.argsort(np.sum((goal_elem-features)**2,axis=0)) #(D,Nb of found if)
+            obs = [{key:history.memory_observation[elem[0]][key][id_] for key in history.memory_observation[elem[0]].keys()} for id_ in idx_elem[:self.k]]
             idx_elem = [history.memory_observation[if_type]['idx'][j] for j in idx_elem]
-            idx[elem[0]] = idx_elem[:self.k]
-        return idx
+            closest_obs[elem[0]] = {'idx':idx_elem[:self.k],'obs':obs}
+        return closest_obs
 
 
     def select_closest_parameters(self,goal: dict,history:History)->dict:
         assert len(history)>0, "history empty"
-        idx = self.feature2closest_parameter(goal,history)
-        closest_codes_per_if_type = {elem[0]:[] for elem in goal}
-        for if_type in closest_codes_per_if_type:
-            for id_ in idx[if_type]:
-                closest_codes_per_if_type[if_type].append(history[id_])
+        closest_obs = self.feature2closest_observations(goal,history)
+        closest_codes_per_if_type = {if_type[0]:[history[id_] for id_ in closest_obs[if_type[0]]['idx']] for if_type in goal}
         return closest_codes_per_if_type
