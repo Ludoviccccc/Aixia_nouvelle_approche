@@ -1,4 +1,3 @@
-![Alt text](illustrations/experience.png)
 * The goal is to collect a diversity of interference behaviors when two independant programs are runing in paralle on both cores.
 * This would help to understand what are the mechanisms that are responsible for interference.
 
