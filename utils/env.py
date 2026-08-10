@@ -25,15 +25,6 @@ class ExtractValues:
         keys = ['bank','addr','req_type','scheduled_delay','core_id']#,'higher_priority_requests']
         keys_attacker = ['core','type','addr','bank','row']
         ddr_scheduler_interference = output['ddr_scheduler_interference']
-        #values_tab = []
-        #for dict_ in out:
-        #    values = self.convert(keys,dict_)
-        #    #values = [dict_[key] if key!='req_type' else 1*(dict_[key]=='read')-1*(dict_[key]!='read') for key in keys]
-        #    instr_a = dict_['higher_priority_requests'][0]
-        #    attacker_instruction_values = [instr_a[key] if key!='type' else 1*(instr_a[key]=='read')-1*(instr_a[key]!='read') for key in keys_attacker]
-        #    values = values + attacker_instruction_values
-        #    values_tab.append(values)
-        #return values_tab,keys + keys_attacker
         dict_ddr_scheduler = self.dict_extractor(keys,ddr_scheduler_interference)
         attacker = {key+'_attacker':[dict_['higher_priority_requests'][0][key] if key!='type' else 1*(dict_['higher_priority_requests'][0][key]=='read')-1*(dict_['higher_priority_requests'][0][key]!='read') for dict_ in ddr_scheduler_interference] for key in keys_attacker}
         return dict_ddr_scheduler | attacker
@@ -42,7 +33,8 @@ class ExtractValues:
     def extract_L2_cache_interference(self,output):
         '''extracts relevant values of shared L2 events to make an array
         '''
-        keys = ['set_idx', 
+        keys = [
+                'set_idx', 
                 'tag', 
                 'evicted_core_id', 
                 'evicted_instr_id',
@@ -52,22 +44,12 @@ class ExtractValues:
                 ]
         #values_tab = []
         events = output['cache_interferences']['L2']
-        #for dict_ in events:
-        #    #values = [dict_[key] if key!='req_type' else 1*(dict_[key]=='read')-1*(dict_[key]!='read') for key in keys]
-        #    values = self.convert(keys,dict_)
-        #    values_tab.append(values)
-        #return values_tab,keys
         return self.dict_extractor(keys,events)
 
     def extract_bus_interference(self,output):
         keys = ['competing_requests']
         values_tab = []
         events = output['bus_contention']
-        #for dict_ in events:
-        #    #values = [dict_[key] if key!='req_type' else 1*(dict_[key]=='read')-1*(dict_[key]!='read') for key in keys]
-        #    values = self.convert(keys,dict_)
-        #    values_tab.append(values)
-        #return values_tab,keys
         return self.dict_extractor(keys,events)
 
 
