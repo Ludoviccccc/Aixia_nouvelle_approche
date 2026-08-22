@@ -45,12 +45,13 @@ if __name__=='__main__':
  
     #IMGEP parameters
     k = 1 #Number of neighbors in goal achievement strategy
-    N = 3000#Number of imgep iterations
+    N = 5000 #Number of imgep iterations
     capacity = N #History capacity
     N_init = 1000 #Number of warming iterations
     print_freq = 100
-    num_mutations = 1 #Nb of mutations in goal achievement strategy
+    num_mutations = 4 #Nb of mutations in goal achievement strategy
     chunk_size = 4
+    period = 100
 
     #address X to work on
     address_x = None
@@ -75,7 +76,7 @@ if __name__=='__main__':
                             )
 
     representation = None
-    periode_update_rep = None
+    period_update_rep = None
 
     #goal generation
     goalgenerator = GoalGenerator(history,representation)
@@ -101,7 +102,8 @@ if __name__=='__main__':
             mutation_method=mutation_method,
             mixing_method=mixing_method,
             representation=representation,
-            periode_update_rep=periode_update_rep,
+            period_update_rep=period_update_rep,
+            period = period,
             )
     history.save_pickle(f'{folder}/imgep_detailled_if_N_{N}_k_{k}')
 
