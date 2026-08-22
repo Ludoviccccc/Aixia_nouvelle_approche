@@ -29,22 +29,22 @@ class IMGEP:
                 goal_generator:GoalGenerator,
                 optimization_policy:OptimizationPolicykNN,
                 randomexploration,
-                periode:int = 1,
+                period:int = 1,
                 representation:Representation=None,
-                periode_update_rep:int=None,
+                period_update_rep:int=None,
                 ):
 
         assert history==randomexploration.history, "provided history class is not equalled to randomexploration's history class"
         assert history==goal_generator.history, "provided history class is not equalled to goal_generator's history class"
-        if periode_update_rep!=None and representation==None:
-            raise TypeError("provided refreshment periode and no representation method")
+        if period_update_rep!=None and representation==None:
+            raise TypeError("provided refreshment period and no representation method")
         self.env = environment
         self.representation = representation
         self.history = history
         self.goal_generator = goal_generator
         self.optimization_policy = optimization_policy
         self.random_explor = randomexploration
-        self.periode_update_rep = periode_update_rep
+        self.period_update_rep = period_update_rep
 
 
         #warm-up budget
@@ -54,7 +54,7 @@ class IMGEP:
         #counter
         self.start = 0
         #update frequency
-        self.periode = periode
+        self.period = period
 
     def __call__(self):
         start_time = time.time()
@@ -68,12 +68,12 @@ class IMGEP:
         assert len(self.history), "no element in history"
         print('start of imgep')
         for i in tqdm(range(self.N_init,self.N)):
-            if (i-self.N_init)%self.periode==0 and i>=self.N_init:
+            if (i-self.N_init)%self.period==0 and i>=self.N_init:
                 goal = self.goal_generator()
             parameter = self.optimization_policy(goal,self.history)
             observation = self.env(parameter)
             self.history.store(parameter,observation)
-            if self.representation!=None and i%self.periode_update_rep==0:
+            if self.representation!=None and i%self.period_update_rep==0:
                 self.representation.update(self.history.as_tab())
                 
         print(time.time() - start_time)
@@ -110,8 +110,12 @@ def run_imgep(N_init:int,
         mutation_method,
         mixing_method,
         representation:Representation=None,
-        periode_update_rep:int=None,
+        period_update_rep:int=None,
+        period:int=1,
         ):
+    '''
+    period:int. Period for new goal
+    '''
 
     policy = OptimizationPolicykNN(mutation_method,
                                 k=k,
@@ -123,7 +127,7 @@ def run_imgep(N_init:int,
     #Explorer for random exploration
     explorer_random = Randomexploration(N_init,environment,code_generation_method,history)
     #IMGEP explorer
-    explorer_imgep = IMGEP(N,N_init,environment,history,goal_generator,policy,explorer_random,representation=representation,periode_update_rep=periode_update_rep)
+    explorer_imgep = IMGEP(N,N_init,environment,history,goal_generator,policy,explorer_random,representation=representation,period_update_rep=period_update_rep,period=period)
 
     #Run exploration
     explorer_imgep()

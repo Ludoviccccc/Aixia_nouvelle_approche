@@ -52,14 +52,20 @@ class OptimizationPolicykNN:
             for elem in goal['goal']:
                 if_type = elem[0] 
                 goal_elem = elem[2].reshape((-1,1))# (D,1)
-                features = history.as_tab(if_type)[:-1] #(D,Nb of found if)
+                features = history.as_tab(if_type) #(D,Nb of found if)
                 idx_elem = np.argsort(np.sum((goal_elem-features)**2,axis=0)) #(D,Nb of found if)
-                obs = [{key:history.memory_observation[elem[0]][key][id_] for key in history.memory_observation[elem[0]].keys()} for id_ in idx_elem[:self.k]]
-                idx_elem = [history.memory_observation[if_type]['idx'][j] for j in idx_elem]
+                #indices = history.memory_observation[elem[0]][key].index
+                obs = []
+                #obs = [{key:history.memory_observation[elem[0]][key][id_] for key in history.memory_observation[elem[0]].index)} for id_ in idx_elem[:self.k]]
+                idx_elem = [history.memory_observation[if_type].columns[j] for j in idx_elem]
                 closest_obs[elem[0]] = {'idx':idx_elem[:self.k],'obs':obs}
             return closest_obs
-        else:
+        elif goal['type']=="behavior":
             features = history.memory_components
+            idx_elem = np.argsort(np.sum((goal['goal']-features)**2,axis=0))[:self.k] #(D,Nb of found if)
+            return idx_elem
+        else:
+            features = history.memory_micro_components
             idx_elem = np.argsort(np.sum((goal['goal']-features)**2,axis=0))[:self.k] #(D,Nb of found if)
             return idx_elem
 
@@ -75,3 +81,4 @@ class OptimizationPolicykNN:
             closest_idx = self.feature2closest_observations(goal,history)
             closest_parameters = [history[id_] for id_ in closest_idx]
             return closest_parameters
+

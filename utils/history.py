@@ -3,6 +3,7 @@ import pickle
 import os.path
 import copy
 import random
+import pandas as pd
 class History:
     def __init__(self,
                     capacity:int=10000,
@@ -11,6 +12,8 @@ class History:
         self.memory_parameter = []
         self.capacity = capacity
         self.memory_observation ={} 
+        self.memory_observation_temp ={} 
+        self.memory_observation_idx_temp ={} 
         self._j = 0
         self.rand_id = random.uniform(0,1)
         self.unused = unused
@@ -19,6 +22,7 @@ class History:
                              'ddr_scheduler_interference',
                              'L2_cache_interference']
         self.memory_components = []
+        self.memory_micro_components = []
 
 
     def __eq__(self,other):
@@ -34,27 +38,61 @@ class History:
         '''
         if self._j==0:
             raise TypeError("no element stored yet")
-        return np.array(list(self.memory_observation[if_type].values()))
+        #print('type',if_type)
+        #print(self.memory_observation[if_type])
+        #print(self.memory_observation[if_type].values.shape)
+        out = self.memory_observation[if_type].values
+        #print('as tab', out.shape)
+        return out
     def __len__(self):
         return len(self.memory_parameter)
     def store(self,parameter:dict,obs:dict):
         if self._j>=self.capacity:
             raise Exception("Exceeded capacity")
+        #saves codes
         self.memory_parameter.append(parameter)
-        for if_type in obs:
+        #saves interference events and their type
+        for if_type in obs[0]:
             if if_type in self.memory_observation:
-                for key in self.memory_observation[if_type]:
-                    if key!='idx':
-                        self.memory_observation[if_type][key] += obs[if_type][key]
-                self.memory_observation[if_type]['idx'] += [self._j]*len(obs[if_type][list(obs[if_type].keys())[0]])
+                #print('shape 2',np.array(list(obs[0][if_type].values())).shape)
+                if len(list(obs[0][if_type].values())[0])>0:
+                    tab = np.array(list(obs[0][if_type].values()))
+                    tab = np.reshape(tab,(len(tab),-1))[:,0]
+                    #self.memory_observation[if_type][self._j] = tab
+                    self.memory_observation_temp[if_type].append(tab)
+                    self.memory_observation_idx_temp[if_type].append(self._j)
             else:                             
-                self.memory_observation[if_type] = obs[if_type]
-                self.memory_observation[if_type]['idx'] = [self._j]*len(obs[if_type][list(obs[if_type].keys())[0]])
+                if len(list(obs[0][if_type].values())[0])>0:
+                    tab = np.array(list(obs[0][if_type].values()))
+                    tab = np.reshape(tab,(len(tab),-1))[:,0]
+                    #print('elem',tab)
+                    self.memory_observation[if_type] = pd.DataFrame(index = obs[0][if_type].keys())
+                    ##print(np.array(list(obs[0][if_type].values())).shape)
+                    self.memory_observation[if_type][self._j] = tab
+                    self.memory_observation_temp[if_type] = []
+                    self.memory_observation_idx_temp[if_type] = []
+        # saves the combination of components that are involved
         encod = np.zeros((4,))
         for j,component in enumerate(self.components):
-            encod[j] = 1
+            #print(obs[0])
+            #exit()
+            if len(obs[0][component][list(obs[0][component].keys())[0]])>0:
+                encod[j] = 1
         self.memory_components.append(encod)
+        # saves the microcomponents that are involved with one hot encoding
+        self.memory_micro_components.append(obs[1])
+        
+        if (self._j-1)%100==0 and self._j>0:
+            self.update_memory()
         self._j+=1
+    def update_memory(self):
+        for if_type in self.components:
+            if if_type in self.memory_observation:
+                load_df  = pd.DataFrame({col:self.memory_observation_temp[if_type][j] for j,col in enumerate(self.memory_observation_idx_temp[if_type])},index=self.memory_observation[if_type].index)
+                self.memory_observation[if_type] = pd.concat([self.memory_observation[if_type],load_df],axis=1)
+                self.memory_observation_temp[if_type] = []
+                self.memory_observation_idx_temp[if_type] = []
+
     def content(self):
         return {
                 "memory_parameter":self.memory_parameter,
