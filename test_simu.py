@@ -51,7 +51,7 @@ if __name__=='__main__':
     simu_params = {
     "min_address" : 0,
     "max_address" : 19,
-    "max_instructions" : 50,
+    "max_instructions" : 10,
     }
 
 
@@ -71,7 +71,11 @@ if __name__=='__main__':
     num_mutations = 1 #Nb of mutations in goal achievement strategy
     address_x = None
     test_mode =  True
-
+    size= 64
+    line_size= 4 
+    assoc = 4
+    num_sets = (size // line_size) // assoc
+    max_tag = 20 // (line_size * num_sets) 
 
     #Envionment class 
     environment = Environment(max_cycle_simulation = max_cycle_simulation,bandwidth_window_size = bandwidth_window_size)
@@ -102,17 +106,27 @@ if __name__=='__main__':
     if test_mode:
         g = lambda: addr_management(address_x=address_x) 
         p1 = g()
-        output = environment({'core0':p1['core0'],'core1':p1['core1']})
+        output = environment({'core0':p1['core0'],'core1':p1['core0']})
+        #encod = environment.encod(output['ddr_interference'],{'row':(0,2),'bank':(0,7),'addr':(0,20),'req_type':(0,1),'scheduled_delay': (0,0), 'core_id': (0,1)})
+        #encod = environment.encod(output['ddr_scheduler_interference'],{'bank': (0,7), 'addr': (0,20), 'req_type': (0,1), 'scheduled_delay': (0,0), 'core_id': (0,1), 'core_attacker': (0,1), 'type_attacker': (0,1), 'addr_attacker': (0,20), 'bank_attacker': (0,7), 'row_attacker': (0,2)})
+        #encod = environment.encod(output['L2_cache_interference'],{'set_idx': (0, num_sets), 'tag': [0, 0], 'evicted_core_id': (0, 1), 'evicted_instr_id': (0, 10), 'evicted_addr': (0,20), 'causing_core_id': (0, 1), 'causing_addr': [0,20]})
+        #if 'set_idx' in encod:
+        #    print(output)
+        #    print(encod)
+        #    ll = list(encod.values())
+        #    print([v.shape for v in ll])
+        #    print(np.concatenate(ll,axis=0).shape)
+        #    break
         start_time = time.time()
-        for j in range(100):
+        for j in range(1000):
             p = g()
             output = environment(p)
             history.store(p,output)
         print(f'duration: {time.time() - start_time}')
         goals = goalgenerator()
+        print(goalgenerator.encod_goal())
         candidate = policy(goals,history)
-        print(policy.feature2closest_observations(goals,history))
-        print('candidate keys',candidate.keys())
+        #print(policy.feature2closest_observations(goals,history))
         #print(goals[0])
 
     else:
