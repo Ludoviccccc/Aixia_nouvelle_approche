@@ -44,8 +44,8 @@ if __name__=='__main__':
     bandwidth_window_size = 20
  
     #IMGEP parameters
-    k = 1 #Number of neighbors in goal achievement strategy
-    N = 5000 #Number of imgep iterations
+    k = 2 #Number of neighbors in goal achievement strategy
+    N = 20000 #Number of imgep iterations
     capacity = N #History capacity
     N_init = 1000 #Number of warming iterations
     print_freq = 100

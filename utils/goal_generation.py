@@ -3,6 +3,19 @@ import sys
 sys.path.append('../')
 from utils.history import History
 from utils.representation import Representation
+
+
+from itertools import combinations
+
+def get_all_subsets(input_list):
+    subsets = []
+    for r in range(len(input_list) + 1):
+        # combinations() returns tuples, so we convert them to lists
+        for combo in combinations(input_list, r):
+            subsets.append(list(combo))
+    return subsets
+
+
 class GoalGenerator:
     def __init__(self,history:History,
             representation:Representation=None):
@@ -11,6 +24,22 @@ class GoalGenerator:
                      'ddr_interference',
                      'ddr_scheduler_interference',
                      'L2_cache_interference']
+        power_set = get_all_subsets(list(range(len(self.components))))
+        self.combinations = get_all_subsets(self.components)
+        self.encods = []
+        for sub in power_set:
+            t = np.zeros(4)
+            for id_ in sub:
+                t[id_] = 1
+            self.encods.append(t) 
+    def probs(self):
+        counts = []
+        for encod in self.encods:
+            nb = np.sum((encod==self.history.memory_components).sum(axis=1)==4)
+            counts.append(nb)
+        transf = np.exp(np.array(counts)*(-1.0))
+        probs = transf/sum(transf)
+        return probs
     def __call__(self):
         '''
         defines a goal for imgep.
@@ -19,17 +48,21 @@ class GoalGenerator:
         Ouputs:tuple.
         (if_type,keys,values (ndarray))
         '''
-        #print(self.history.memory_observation.keys())
-        n = np.random.randint(1,len(self.components))
-        target_if_types = np.random.choice(list(self.history.memory_observation.keys()),n)
-        #print(target_if_types)
+        if np.random.binomial(1,.5):
+            probs = self.probs()
+            id_ = np.random.choice(range(len(self.combinations)),p=probs)
+            encod = self.encods[id_]
+            target_if_types = self.combinations[id_]
+        else:
+            n = np.random.randint(1,len(self.components))
+            target_if_types = np.random.choice(list(self.history.memory_observation.keys()),n)
+            encod = np.zeros(4)
+            for i,if_type in enumerate(self.components):
+                if if_type in target_if_types:
+                    encod[i] = 1
 
-        encod = np.zeros(4)
-        if np.random.binomial(1,.1):
+        if np.random.binomial(1,0.1):
             target_if_type = []
-        for i,if_type in enumerate(self.components):
-            if if_type in target_if_types:
-                encod[i] = 1
         if np.random.binomial(1,.5):
             return {"type":"behavior","goal":encod}
         else:
@@ -39,34 +72,28 @@ class GoalGenerator:
                 goals = []
                 tab = []
                 for target_if_type in target_if_types:
-                    #print('taget if type',target_if_type)
                     features = self.history.as_tab(target_if_type)
                     min_ = features.min(axis=1)
                     max_ = features.max(axis=1)
                     try:
-                        goal = np.random.randint(0.1*min_,1.2*max_+1)
+                        goal = np.random.randint(0.1*min_,1.0*max_+1)
                     except:
                         raise TypeError(f'type if:{target_if_type},features={features}')
                     goals.append((target_if_type,list(self.history.memory_observation[target_if_type].columns),goal))
                 if encod in np.array(self.history.memory_components):
                     a = encod
                     b = self.history.memory_components
-                    #print(f'shape {a.shape},{np.array(b).shape}')
                     idx = np.where((a==b).sum(axis=1)==4)[0]
-                    #print(idx)
                     for id_ in idx:
                         s = 0
                         for comp in goals:
-                            #print(self.history.memory_observation[comp[0]][id_])
                             try:
                                 if not comp[2].all()==self.history.memory_observation[comp[0]][id_].values.all():
                                     break
                                 else:
                                     s+=1
                             except:
-                                #raise TypeError(f'id_={id_} index= {self.history.memory_observation[comp[0]].columns}')
                                 raise TypeError(f'if type={comp[0]} ,encod={encod} index= {self.history.memory_observation[comp[0]].columns},id_={id_}')
-                        #print('s',s)
                         if s == len(goals):
                             cond = True # we found the goal in the history
                             break
