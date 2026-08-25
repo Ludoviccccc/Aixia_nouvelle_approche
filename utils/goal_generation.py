@@ -67,7 +67,7 @@ class GoalGenerator:
 
         if np.random.binomial(1,0.0):
             target_if_type = []
-        if np.random.binomial(1,.2):
+        if np.random.binomial(1,.5):
             return {"type":"behavior","goal":encod}
         else:
             self.history.update_memory()
