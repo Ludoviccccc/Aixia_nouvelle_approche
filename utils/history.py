@@ -82,7 +82,7 @@ class History:
         # saves the microcomponents that are involved with one hot encoding
         self.memory_micro_components.append(obs[1])
         
-        if (self._j-1)%100==0 and self._j>0:
+        if (self._j-1)%10==0 and self._j>0:
             self.update_memory()
         self._j+=1
     def update_memory(self):
