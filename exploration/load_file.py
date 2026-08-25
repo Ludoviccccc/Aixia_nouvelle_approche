@@ -12,7 +12,7 @@ def load(name,k=None):
         contentbis = pickle.load(f)
     print(f'{name}_{k}.pkl')
 
-    return contentbis
+    return contentbis,f'{name}_{k}.pkl'
 class open_content_list:
     def __init__(self,folder,k,N,algo):
         self.k = k

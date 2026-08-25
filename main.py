@@ -9,6 +9,7 @@ from utils.history import History
 from utils.OptimizationPolicy import OptimizationPolicykNN
 from utils.distance import DistanceMethod
 from utils.mutation import MutationInstructions
+from utils.mutation2 import MutationInstructions2
 from utils.mix_interleaving import Mix_sequences_interleaved
 from utils.goal_generation import GoalGenerator
 from utils.imgep import run_imgep,Randomexploration
@@ -84,6 +85,7 @@ if __name__=='__main__':
     #optimization policy models
 
     mutation_method = MutationInstructions(num_mutations,**simu_params)
+    mutation_method_informed = MutationInstructions2(num_mutations,**simu_params)
     mixing_method   = Mix_sequences_interleaved(max_cycle=max_cycle_instructions,chunk_size=chunk_size)
     
     weights = None
@@ -100,6 +102,7 @@ if __name__=='__main__':
             goal_generator=goalgenerator,
             distance_method=distance_method,
             mutation_method=mutation_method,
+            mutation_method_informed=mutation_method_informed,
             mixing_method=mixing_method,
             representation=representation,
             period_update_rep=period_update_rep,

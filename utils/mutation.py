@@ -7,6 +7,7 @@ class MutationInstructions:
     Args:
         instructions: Original instruction dictionary
         num_mutations: Number of mutations to perform
+        max_instructions: Maximum number of instructions for the output programs
         max_cycle: Maximum cycle number (default: 60)
         max_address: Maximum memory address (default: 19)
     

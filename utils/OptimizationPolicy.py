@@ -5,9 +5,11 @@ sys.path.append("../")
 from utils.history import History
 from utils.distance import DistanceMethod
 from utils.mutation import MutationInstructions
+from utils.mutation2 import MutationInstructions2 
 class OptimizationPolicykNN:
     def __init__(self,
                 mutation_method:MutationInstructions,
+                mutation_method_informed:MutationInstructions2,
                 mixing_method,
                 distance_method:DistanceMethod,
                 representation=None,
@@ -15,6 +17,7 @@ class OptimizationPolicykNN:
                 ):
         super().__init__()
         self.mutation_method = mutation_method
+        self.mutation_method_informed = mutation_method_informed
         self.mixing_method = mixing_method
         self.distance_method = distance_method
         self.representation = representation
@@ -33,13 +36,17 @@ class OptimizationPolicykNN:
                     programs_to_mix.append(output)
                 else:
                     programs_to_mix.append(closest_parameters[if_type][0])
-        else:
+            if len(programs_to_mix)>1:
+                candidate = self.mixing_method(programs_to_mix)
+            else:
+                candidate = programs_to_mix[0]
+            candidate = self.mutation_method(candidate,goal)
+        elif goal['type']=='behavior':
+            #print(goal['goal'])
+            goal = {'ddr': goal['goal'][1], 'ddr_scheduler': goal['goal'][2], 'L2_cache': goal['goal'][3], 'bus': goal['goal'][0]}
+            #exit()
             programs_to_mix = closest_parameters
-        if len(programs_to_mix)>1:
-            candidate = self.mixing_method(programs_to_mix)
-        else:
-            candidate = programs_to_mix[0]
-        candidate = self.mutation_method(candidate,goal)
+            candidate = self.mutation_method_informed(closest_parameters[0],goal,closest_obs[0])
         return candidate
 
     def feature2closest_observations(self,goal:np.ndarray,history:History)->np.ndarray:
@@ -54,7 +61,6 @@ class OptimizationPolicykNN:
                 goal_elem = elem[2].reshape((-1,1))# (D,1)
                 features = history.as_tab(if_type) #(D,Nb of found if)
                 idx_elem = np.argsort(np.sum((goal_elem-features)**2,axis=0)) #(D,Nb of found if)
-                #indices = history.memory_observation[elem[0]][key].index
                 obs = [{key:history.memory_observation[elem[0]][key][id_] if key in history.memory_observation[elem[0]] else [] for key in history.memory_observation[elem[0]].index} for id_ in idx_elem[:self.k]]
                 if len(goal['idx'])>0:
                     idx_elem = [history.memory_observation[if_type].columns[j] for j in idx_elem if history.memory_observation[if_type].columns[j] in goal['idx']]
