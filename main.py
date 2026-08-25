@@ -30,6 +30,7 @@ def distance_function(goal,features,weights=None):
 
 
 if __name__=='__main__':
+    iterations = 1 #Nb of imgeps
 
     simu_params = {
     "min_address" : 0,
@@ -91,27 +92,27 @@ if __name__=='__main__':
     weights = None
     distance_method = DistanceMethod(distance_function,weights=weights)
 
+    for _ in range(iterations): 
+        run_imgep(N_init=N_init,
+                N=N,
+                capacity=capacity,
+                k=k,
+                environment = environment,
+                history=history,
+                code_generation_method = code_generation_method,
+                goal_generator=goalgenerator,
+                distance_method=distance_method,
+                mutation_method=mutation_method,
+                mutation_method_informed=mutation_method_informed,
+                mixing_method=mixing_method,
+                representation=representation,
+                period_update_rep=period_update_rep,
+                period = period,
+                )
+        history.save_pickle(f'{folder}/imgep_detailled_if_N_{N}_k_{k}')
+
     
-    run_imgep(N_init=N_init,
-            N=N,
-            capacity=capacity,
-            k=k,
-            environment = environment,
-            history=history,
-            code_generation_method = code_generation_method,
-            goal_generator=goalgenerator,
-            distance_method=distance_method,
-            mutation_method=mutation_method,
-            mutation_method_informed=mutation_method_informed,
-            mixing_method=mixing_method,
-            representation=representation,
-            period_update_rep=period_update_rep,
-            period = period,
-            )
-    history.save_pickle(f'{folder}/imgep_detailled_if_N_{N}_k_{k}')
-
-
-    history_rand = History(capacity=capacity,unused=unused)
-    random_explorer = Randomexploration(N,environment,code_generation_method,history_rand)
-    random_explorer()
-    history_rand.save_pickle(f'{folder}/random_detailled_if_N_{N}')
+    #history_rand = History(capacity=capacity,unused=unused)
+    #random_explorer = Randomexploration(N,environment,code_generation_method,history_rand)
+    #random_explorer()
+    #history_rand.save_pickle(f'{folder}/random_detailled_if_N_{N}')
