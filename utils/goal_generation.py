@@ -27,6 +27,7 @@ class GoalGenerator:
         power_set = get_all_subsets(list(range(len(self.components))))
         self.combinations = get_all_subsets(self.components)
         self.encods = []
+        self.counts = 0
         for sub in power_set:
             t = np.zeros(4)
             for id_ in sub:
@@ -37,7 +38,10 @@ class GoalGenerator:
         for encod in self.encods:
             nb = np.sum((encod==self.history.memory_components).sum(axis=1)==4)
             counts.append(nb)
-        transf = np.exp(np.array(counts)*(-1.0))
+        delta = np.array(counts) - self.counts
+        self.counts = np.array(counts)
+        #transf = np.exp(np.array(counts)*(-1.0))
+        transf = np.exp(np.array(delta)*(-1.0))
         probs = transf/sum(transf)
         return probs
     def __call__(self):
@@ -48,7 +52,7 @@ class GoalGenerator:
         Ouputs:tuple.
         (if_type,keys,values (ndarray))
         '''
-        if np.random.binomial(1,.5):
+        if np.random.binomial(1,.8):
             probs = self.probs()
             id_ = np.random.choice(range(len(self.combinations)),p=probs)
             encod = self.encods[id_]
@@ -61,13 +65,14 @@ class GoalGenerator:
                 if if_type in target_if_types:
                     encod[i] = 1
 
-        if np.random.binomial(1,0.1):
+        if np.random.binomial(1,0.0):
             target_if_type = []
-        if np.random.binomial(1,.5):
+        if np.random.binomial(1,.2):
             return {"type":"behavior","goal":encod}
         else:
             self.history.update_memory()
             cond = True
+            idx = []
             while cond:
                 goals = []
                 tab = []
@@ -100,7 +105,7 @@ class GoalGenerator:
                     if cond==True:
                         break
                     cond = False
-            return {"type":"precise_if","goal":goals}
+            return {"type":"precise_if","goal":goals,"idx":idx}
     #def __call__(self):
     #    dim = np.random.randint(1,4+1)
     #    choice = np.random.choice(list(range(4)),dim)

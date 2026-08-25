@@ -32,18 +32,20 @@ class MutationInstructions:
         # Create a deep copy to avoid modifying the original
         mutated = copy.deepcopy(instructions)
         instruction_types = ['read', 'write']
-        
-        # Get all possible cycles (0 to max_cycle)
-        used_cycles = set(mutated.keys())
-        max_used_cycle = max(used_cycles)
-        min_used_cycle = min(used_cycles)
-        min_used_cycle_set = set([min_used_cycle])
-        #print('min used cycle',min_used_cycle)
-        max_used_cycle_set = set([max_used_cycle])
-        all_cycles = set(range(min_used_cycle, max_used_cycle + 1))
-        all_cycles = set(range(0, self.max_cycle + 1))
-        available_cycles = list(all_cycles - used_cycles)
+       
+        def determin_cycles(mutated):
+            # Get all possible cycles (0 to max_cycle)
+            used_cycles = set(mutated.keys())
+            max_used_cycle = max(used_cycles)
+            min_used_cycle = min(used_cycles)
+            min_used_cycle_set = set([min_used_cycle])
+            #print('min used cycle',min_used_cycle)
+            max_used_cycle_set = set([max_used_cycle])
+            all_cycles = set(range(0, self.max_cycle + 1))
+            available_cycles = list(all_cycles - used_cycles)
+            return used_cycles,max_used_cycle,min_used_cycle,min_used_cycle_set,max_used_cycle_set,all_cycles,available_cycles
 
+        used_cycles,max_used_cycle,min_used_cycle,min_used_cycle_set,max_used_cycle_set,all_cycles,available_cycles = determin_cycles(mutated)
         
         for _ in range(self.num_mutations):
             if self.max_instructions>len(mutated)>3:
@@ -74,7 +76,7 @@ class MutationInstructions:
                 old_type, old_address = mutated[cycle_to_modify]
                 
                 # Choose what to modify: type, address, or both
-                modify_choice = random.choice(['type', 'address', 'both'])
+                modify_choice = random.choice(['type', 'address', 'both','cycle'])
                 
                 if modify_choice == 'type':
                     # Change instruction type only
@@ -84,17 +86,22 @@ class MutationInstructions:
                     # Change address only
                     new_address = random.randint(self.min_address, self.max_address)
                     mutated[cycle_to_modify] = (old_type, new_address)
-                else:
+                elif modify_choice=='both':
                     # Change both type and address
                     new_type = 'write' if old_type == 'read' else 'read'
                     new_address = random.randint(self.min_address, self.max_address)
                     mutated[cycle_to_modify] = (new_type, new_address)
+                elif modify_choice=='cycle':
+                    new_cycle = random.choice(available_cycles)
+                    mutated[new_cycle] = (old_type, old_address)
+                    used_cycles,max_used_cycle,min_used_cycle,min_used_cycle_set,max_used_cycle_set,all_cycles,available_cycles = determin_cycles(mutated)
+
         if len(mutated)>self.max_instructions:
             to_del = random.sample(list(mutated.keys()),len(mutated)- self.max_instructions)
             for k in to_del:
                 del mutated[k]
         return mutated
-    def __call__(self,program:dict):
+    def __call__(self,program:dict,goal:dict):
         output = {'core0':self.mutate(program['core1']),
                 'core1':self.mutate(program['core1'])
                 }

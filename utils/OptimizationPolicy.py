@@ -24,7 +24,7 @@ class OptimizationPolicykNN:
         '''
         Outputs candidate parameter for reaching `goal`
         '''
-        closest_parameters = self.select_closest_parameters(goal,H) 
+        closest_parameters,closest_obs = self.select_closest_parameters(goal,H) 
         if goal['type']=='precise_if':
             programs_to_mix = []
             for if_type in closest_parameters:
@@ -39,7 +39,7 @@ class OptimizationPolicykNN:
             candidate = self.mixing_method(programs_to_mix)
         else:
             candidate = programs_to_mix[0]
-        candidate = self.mutation_method(candidate)
+        candidate = self.mutation_method(candidate,goal)
         return candidate
 
     def feature2closest_observations(self,goal:np.ndarray,history:History)->np.ndarray:
@@ -55,9 +55,11 @@ class OptimizationPolicykNN:
                 features = history.as_tab(if_type) #(D,Nb of found if)
                 idx_elem = np.argsort(np.sum((goal_elem-features)**2,axis=0)) #(D,Nb of found if)
                 #indices = history.memory_observation[elem[0]][key].index
-                obs = []
-                #obs = [{key:history.memory_observation[elem[0]][key][id_] for key in history.memory_observation[elem[0]].index)} for id_ in idx_elem[:self.k]]
-                idx_elem = [history.memory_observation[if_type].columns[j] for j in idx_elem]
+                obs = [{key:history.memory_observation[elem[0]][key][id_] if key in history.memory_observation[elem[0]] else [] for key in history.memory_observation[elem[0]].index} for id_ in idx_elem[:self.k]]
+                if len(goal['idx'])>0:
+                    idx_elem = [history.memory_observation[if_type].columns[j] for j in idx_elem if history.memory_observation[if_type].columns[j] in goal['idx']]
+                else:
+                    idx_elem = [history.memory_observation[if_type].columns[j] for j in idx_elem]
                 closest_obs[elem[0]] = {'idx':idx_elem[:self.k],'obs':obs}
             return closest_obs
         elif goal['type']=="behavior":
@@ -74,11 +76,14 @@ class OptimizationPolicykNN:
     def select_closest_parameters(self,goal: dict,history:History)->dict:
         assert len(history)>0, "history empty"
         if goal['type']=='precise_if':
-            closest_obs = self.feature2closest_observations(goal,history)
-            closest_codes_per_if_type = {if_type[0]:[history[id_] for id_ in closest_obs[if_type[0]]['idx']] for if_type in goal['goal']}
-            return closest_codes_per_if_type
+            closest_ = self.feature2closest_observations(goal,history)
+            closest_codes_per_if_type = {if_type[0]:[history[id_] for id_ in closest_[if_type[0]]['idx']] for if_type in goal['goal']}
+
+            closest_obs = []#closest_['obs']
+            return closest_codes_per_if_type,closest_obs
         else:
             closest_idx = self.feature2closest_observations(goal,history)
             closest_parameters = [history[id_] for id_ in closest_idx]
-            return closest_parameters
+            closest_obs = [{if_type:history.memory_observation[if_type][id_].to_dict() if history.memory_components[id_][j]==1 else {} for j,if_type in enumerate(history.components) } for id_ in closest_idx]
+            return closest_parameters,closest_obs
 
