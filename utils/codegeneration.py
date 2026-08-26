@@ -8,17 +8,21 @@ sys.path.append('../')
 class Address_Management:
     def __init__(self,
             max_cycle=60,
-            min_address = 0,
-            max_address = 19,
+            min_address_core_0 = 0,
+            max_address_core_0 = 19,
+            min_address_core_1 = 0,
+            max_address_core_1 = 19,
             num_instructions=None,
             max_instructions=5,
             ):
-        self.min_address = min_address
-        self.max_address = max_address
+        self.min_address_core_0 = min_address_core_0
+        self.max_address_core_0 = max_address_core_0
+        self.min_address_core_1 = min_address_core_1
+        self.max_address_core_1 = max_address_core_1
         self.max_cycle = max_cycle
         self.num_instructions = num_instructions
         self.max_instructions = max_instructions
-    def generate_instruction_sequence(self,address_x=None):
+    def generate_instruction_sequence(self,min_address,max_address,address_x=None):
         """
         Generate a random dictionary of assembly instructions.
         
@@ -49,15 +53,15 @@ class Address_Management:
                 if i==0 or i==num_instructions-1:
                     address = address_x
                 else:
-                    address = random.randint(self.min_address,self.max_address)
+                    address = random.randint(min_address,max_address)
             else:
-                address = random.randint(self.min_address,self.max_address)
+                address = random.randint(min_address,max_address)
             instr_type = random.choice(instruction_types)
             #instructions[cycle] = (instr_type, address)
             instructions[cycle] = (instr_type, address)
         return dict(sorted(instructions.items()))
     def __call__(self,address_x):
         output = {}
-        output['core0'] = self.generate_instruction_sequence(address_x=address_x)
-        output['core1'] = self.generate_instruction_sequence(address_x=address_x)
+        output['core0'] = self.generate_instruction_sequence(self.min_address_core_0,self.max_address_core_0,address_x=address_x)
+        output['core1'] = self.generate_instruction_sequence(self.min_address_core_1,self.max_address_core_1,address_x=address_x)
         return output

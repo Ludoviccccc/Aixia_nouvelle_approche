@@ -9,14 +9,18 @@ class MutationInstructions2:
     def __init__(self,
                  num_mutations: int = 1,
                  max_cycle: int = 60,
-                 min_address: int = 0,
-                 max_address: int = 19,
+                 min_address_core_0: int = 0,
+                 max_address_core_0: int = 19,
+                 min_address_core_1: int = 0,
+                 max_address_core_1: int = 19,
                  max_instructions: int = None,
                  ):
         self.num_mutations = num_mutations
         self.max_cycle = max_cycle
-        self.min_address = min_address
-        self.max_address = max_address
+        self.min_address_core_0 = min_address_core_0
+        self.max_address_core_0 = max_address_core_0
+        self.min_address_core_1 = min_address_core_1
+        self.max_address_core_1 = max_address_core_1
         self.max_instructions = max_instructions
 
     def _parse_outcome(self, outcome):
@@ -86,7 +90,7 @@ class MutationInstructions2:
                 cycles.append(cycle)
         return cycles
 
-    def _guided_mutate(self, instructions, core_id, goal, outcome_info):
+    def _guided_mutate(self, instructions, core_id, goal, outcome_info,min_address,max_address):
         """
         Apply guided mutations to a single core's instruction dict.
         `goal` is a dict like {'ddr': True, 'L2_cache': False, ...}
@@ -146,7 +150,7 @@ class MutationInstructions2:
             for _ in range(min(len(modifiable), 2)):
                 cycle = random.choice(modifiable)
                 old_type, _ = mutated[cycle]
-                new_addr = random.randint(self.min_address, self.max_address)
+                new_addr = random.randint(min_address, max_address)
                 mutated[cycle] = (old_type, new_addr)
                 modifiable.remove(cycle)
 
@@ -176,14 +180,14 @@ class MutationInstructions2:
 
         return mutated
 
-    def mutate(self, instructions, outcome_info=None, goal=None):
+    def mutate(self, instructions,min_address,max_address, outcome_info=None, goal=None):
         """
         Original mutation method (random) – kept as fallback.
         If outcome_info and goal are provided, use guided mutation.
         """
         if outcome_info is not None and goal is not None:
             # We need core_id, but we don't have it here. We'll handle in __call__.
-            return self._guided_mutate(instructions, 0, goal, outcome_info)  # default core_id 0
+            return self._guided_mutate(instructions, 0, goal, outcome_info,min_address,max_address)  # default core_id 0
 
         # Original random mutation logic
         mutated = copy.deepcopy(instructions)
@@ -213,7 +217,7 @@ class MutationInstructions2:
             if mutation_type == 'add' and available_cycles:
                 new_cycle = random.choice(available_cycles)
                 instr_type = random.choice(instruction_types)
-                address = random.randint(self.min_address, self.max_address)
+                address = random.randint(min_address, max_address)
                 mutated[new_cycle] = (instr_type, address)
                 available_cycles.remove(new_cycle)
             elif mutation_type == 'delete' and mutated:
@@ -228,11 +232,11 @@ class MutationInstructions2:
                     new_type = 'write' if old_type == 'read' else 'read'
                     mutated[cycle_to_modify] = (new_type, old_address)
                 elif modify_choice == 'address':
-                    new_address = random.randint(self.min_address, self.max_address)
+                    new_address = random.randint(min_address, max_address)
                     mutated[cycle_to_modify] = (old_type, new_address)
                 elif modify_choice == 'both':
                     new_type = 'write' if old_type == 'read' else 'read'
-                    new_address = random.randint(self.min_address, self.max_address)
+                    new_address = random.randint(min_address, max_address)
                     mutated[cycle_to_modify] = (new_type, new_address)
                 elif modify_choice == 'cycle':
                     new_cycle = random.choice(available_cycles)
@@ -256,7 +260,7 @@ class MutationInstructions2:
             outcome_info = self._parse_outcome(outcome)
 
         # Mutate each core separately
-        new_core0 = self.mutate(program['core0'], outcome_info, goal)
-        new_core1 = self.mutate(program['core1'], outcome_info, goal)
+        new_core0 = self.mutate(program['core0'], self.min_address_core_0,self.max_address_core_0,outcome_info, goal)
+        new_core1 = self.mutate(program['core1'], self.min_address_core_1,self.max_address_core_1,outcome_info, goal)
 
         return {'core0': new_core0, 'core1': new_core1}

@@ -55,8 +55,10 @@ class ExtractValues:
 
 class Environment(ExtractValues):
     def __init__(self,
-            min_address = 0,
-            max_address = 19,
+            min_address_core_0 = 0,
+            max_address_core_0 = 19,
+            min_address_core_1 = 0,
+            max_address_core_1 = 19,
             num_banks = 8,
             max_instructions:int=100,
             step:int=10,
@@ -65,7 +67,7 @@ class Environment(ExtractValues):
             ):
         super().__init__()
         self.num_banks = num_banks
-        self.num_addr = max_address - min_address
+        self.num_addr = max_address_core_1 - min_address_core_0
         self.step = step
         self.max_instructions = max_instructions
         self.max_cycle_simulation = max_cycle_simulation
