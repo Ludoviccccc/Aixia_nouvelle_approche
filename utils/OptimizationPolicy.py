@@ -39,7 +39,10 @@ class OptimizationPolicykNN:
             if len(programs_to_mix)>1:
                 candidate = self.mixing_method(programs_to_mix)
             else:
-                candidate = programs_to_mix[0]
+                try:
+                    candidate = programs_to_mix[0]
+                except ValueError:
+                    print('closest parameters', closest_parameters)
             candidate = self.mutation_method(candidate,goal)
         elif goal['type']=='behavior':
             #print(goal['goal'])
