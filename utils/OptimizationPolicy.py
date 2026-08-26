@@ -11,7 +11,6 @@ class OptimizationPolicykNN:
                 mutation_method:MutationInstructions,
                 mutation_method_informed:MutationInstructions2,
                 mixing_method,
-                distance_method:DistanceMethod,
                 representation=None,
                 k=1,
                 ):
@@ -19,7 +18,6 @@ class OptimizationPolicykNN:
         self.mutation_method = mutation_method
         self.mutation_method_informed = mutation_method_informed
         self.mixing_method = mixing_method
-        self.distance_method = distance_method
         self.representation = representation
         self.k = k
 
