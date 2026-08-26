@@ -33,8 +33,10 @@ if __name__=='__main__':
     iterations = 1 #Nb of imgeps
 
     simu_params = {
-    "min_address" : 0,
-    "max_address" : 19,
+    "min_address_core_0" : 0,
+    "max_address_core_0" : 9,
+    "min_address_core_1" : 10,
+    "max_address_core_1" : 19,
     "max_instructions" : 10,
     }
 
@@ -112,7 +114,7 @@ if __name__=='__main__':
         history.save_pickle(f'{folder}/imgep_detailled_if_N_{N}_k_{k}')
 
     
-    #history_rand = History(capacity=capacity,unused=unused)
-    #random_explorer = Randomexploration(N,environment,code_generation_method,history_rand)
-    #random_explorer()
-    #history_rand.save_pickle(f'{folder}/random_detailled_if_N_{N}')
+    history_rand = History(capacity=capacity,unused=unused)
+    random_explorer = Randomexploration(N,environment,code_generation_method,history_rand)
+    random_explorer()
+    history_rand.save_pickle(f'{folder}/random_detailled_if_N_{N}')
