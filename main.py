@@ -14,6 +14,7 @@ from utils.mix_interleaving import Mix_sequences_interleaved
 from utils.goal_generation import GoalGenerator
 from utils.imgep import run_imgep,Randomexploration
 from utils.env import Environment
+from utils.baseline import MixBaseline
 
 from diversity.diversty import Diversity
 
@@ -48,7 +49,7 @@ if __name__=='__main__':
     bandwidth_window_size = 20
  
     #IMGEP parameters
-    k = 2 #Number of neighbors in goal achievement strategy
+    k = 1 #Number of neighbors in goal achievement strategy
     N = 20000 #Number of imgep iterations
     capacity = N #History capacity
     N_init = 1000 #Number of warming iterations
@@ -114,7 +115,15 @@ if __name__=='__main__':
         history.save_pickle(f'{folder}/imgep_detailled_if_N_{N}_k_{k}')
 
     
-    history_rand = History(capacity=capacity,unused=unused)
-    random_explorer = Randomexploration(N,environment,code_generation_method,history_rand)
-    random_explorer()
-    history_rand.save_pickle(f'{folder}/random_detailled_if_N_{N}')
+    #history_rand = History(capacity=capacity,unused=unused)
+    #random_explorer = Randomexploration(N,environment,code_generation_method,history_rand)
+    #random_explorer()
+    #history_rand.save_pickle(f'{folder}/random_detailled_if_N_{N}')
+
+
+
+    history_baseline = History(capacity=capacity,unused=unused)
+    explorer_random = Randomexploration(N_init,environment,code_generation_method,history_baseline)
+    baseline_mixing = MixBaseline(N,N_init,environment,code_generation_method,history_baseline,explorer_random,k,mixing_method,mutation_method)
+    baseline_mixing()
+    history_baseline.save_pickle(f'{folder}/baseline_detailled_if_N_{N}')
