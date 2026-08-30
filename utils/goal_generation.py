@@ -25,25 +25,34 @@ class GoalGenerator:
                      'ddr_scheduler_interference',
                      'L2_cache_interference']
         power_set = get_all_subsets(list(range(len(self.components))))
-        self.combinations = get_all_subsets(self.components)
+        self.combinations = get_all_subsets(self.components)[1:]
         self.encods = []
         self.counts = 0
-        for sub in power_set:
+        for sub in power_set[1:]:
             t = np.zeros(4)
             for id_ in sub:
                 t[id_] = 1
             self.encods.append(t) 
     def probs(self):
         counts = []
-        for encod in self.encods:
-            nb = np.sum((encod==self.history.memory_components).sum(axis=1)==4)
-            counts.append(nb)
+        for key in list(self.history.memory_combinations.keys())[1:]:
+            counts.append(len(np.unique(self.history.memory_combinations[key],axis=0)))
         delta = np.array(counts) - self.counts
         self.counts = np.array(counts)
-        #transf = np.exp(np.array(counts)*(-1.0))
         transf = np.exp(np.array(delta)*(-1.0))
         probs = transf/sum(transf)
         return probs
+    #def probs(self):
+    #    counts = []
+    #    for encod in self.encods:
+    #        nb = np.sum((encod==self.history.memory_components).sum(axis=1)==4)
+    #        counts.append(nb)
+    #    delta = np.array(counts) - self.counts
+    #    self.counts = np.array(counts)
+    #    #transf = np.exp(np.array(counts)*(-1.0))
+    #    transf = np.exp(np.array(delta)*(-1.0))
+    #    probs = transf/sum(transf)
+    #    return probs
     def __call__(self):
         '''
         defines a goal for imgep.
@@ -52,6 +61,7 @@ class GoalGenerator:
         Ouputs:tuple.
         (if_type,keys,values (ndarray))
         '''
+        self.history.update_memory()
         if np.random.binomial(1,.8):
             probs = self.probs()
             id_ = np.random.choice(range(len(self.combinations)),p=probs)
@@ -70,7 +80,7 @@ class GoalGenerator:
         if np.random.binomial(1,.5):
             return {"type":"behavior","goal":encod}
         else:
-            self.history.update_memory()
+            #self.history.update_memory()
             cond = True
             idx = []
             while cond:
@@ -84,7 +94,7 @@ class GoalGenerator:
                         goal = np.random.randint(0.1*min_,1.0*max_+1)
                     except:
                         raise TypeError(f'type if:{target_if_type},features={features}')
-                    goals.append((target_if_type,list(self.history.memory_observation[target_if_type].columns),goal))
+                    goals.append((target_if_type,list(self.history.memory_observation[target_if_type].columns),goal,{'min':min_,'max':max_}))
                 if encod in np.array(self.history.memory_components):
                     a = encod
                     b = self.history.memory_components
