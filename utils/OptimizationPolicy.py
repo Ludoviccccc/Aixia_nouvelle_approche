@@ -37,10 +37,10 @@ class OptimizationPolicykNN:
             if len(programs_to_mix)>1:
                 candidate = self.mixing_method(programs_to_mix)
             else:
-                try:
+                if len(programs_to_mix)>=1:
                     candidate = programs_to_mix[0]
-                except ValueError:
-                    print('closest parameters', closest_parameters)
+                else:
+                    raise ValueError(f'closest parameters:{ closest_parameters},goal idx:{len(goal['idx'])},if_types:{closest_parameters.keys()}')
             candidate = self.mutation_method(candidate,goal)
         elif goal['type']=='behavior':
             #print(goal['goal'])
@@ -49,7 +49,6 @@ class OptimizationPolicykNN:
             programs_to_mix = closest_parameters
             candidate = self.mutation_method_informed(closest_parameters[0],goal,closest_obs[0])
         return candidate
-
     def feature2closest_observations(self,goal:np.ndarray,history:History)->np.ndarray:
         '''
         selects the `self.k` closest observations indices from the database to the desired goal
@@ -60,8 +59,15 @@ class OptimizationPolicykNN:
             for elem in goal['goal']:
                 if_type = elem[0] 
                 goal_elem = elem[2].reshape((-1,1))# (D,1)
+                min_ = elem[3]['min']
+                max_ = elem[3]['max']
+                denominator = max_ - min_
+                denominator = denominator.reshape((-1,1))
+                denominator[denominator==0]=1
                 features = history.as_tab(if_type) #(D,Nb of found if)
-                idx_elem = np.argsort(np.sum((goal_elem-features)**2,axis=0)) #(D,Nb of found if)
+                out = np.sum(((goal_elem - features)/denominator)**2,axis=0)
+                #idx_elem = np.argsort(np.sum((goal_elem-features)**2,axis=0)) #(D,Nb of found if)
+                idx_elem = np.argsort(out) #(D,Nb of found if)
                 obs = [{key:history.memory_observation[elem[0]][key][id_] if key in history.memory_observation[elem[0]] else [] for key in history.memory_observation[elem[0]].index} for id_ in idx_elem[:self.k]]
                 if len(goal['idx'])>0:
                     idx_elem = [history.memory_observation[if_type].columns[j] for j in idx_elem if history.memory_observation[if_type].columns[j] in goal['idx']]
