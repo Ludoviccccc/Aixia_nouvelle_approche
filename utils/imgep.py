@@ -20,6 +20,7 @@ class IMGEP:
     H: History. Buffer containing paramters and observations  
     G: GoalGenerator.
     Pi: OptimizationPolicy.
+    period: int. period for updating the goal.
     """
     def __init__(self,
                 N:int,

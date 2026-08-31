@@ -42,7 +42,6 @@ class ExtractValues:
                 'causing_core_id',
                 'causing_addr',
                 ]
-        #values_tab = []
         events = output['cache_interferences']['L2']
         return self.dict_extractor(keys,events)
 
@@ -90,7 +89,7 @@ class Environment(ExtractValues):
                  'ddr_scheduler_interference':self.extract_ddr_scheduler_if_array(output),
                  'L2_cache_interference':self.extract_L2_cache_interference(output),
                  }
-        return dict_,self.embedding_out(dict_)
+        return dict_
     def encod(self,dict_,minmax_dict):
         out = {}
         for key in minmax_dict:
@@ -104,37 +103,3 @@ class Environment(ExtractValues):
                     out[key] = np.zeros((minmax_dict[key][1]-minmax_dict[key][0]+1,))
                     out[key][dict_[key][0]] = 1
         return out
-    def embedding_out(self,dict_):
-        size= 64
-        line_size= 4
-        assoc = 4
-
-
-        to_array = lambda encod,minmax:self._dict_to_array(encod) if len(encod[list(encod.keys())[0]])>0 else np.zeros((sum([minmax[key][1]+1 if minmax[key][0]!=minmax[key][1] else 1 for key in minmax]),))
-
-        num_sets = (size // line_size) // assoc
-        max_tag = 20 // (line_size * num_sets)
-        #minmax_ddr = {'row':(0,2),'bank':(0,7),'addr':(0,20),'req_type':(0,1),'scheduled_delay': (0,0), 'core_id': (0,1)}
-        minmax_ddr = {'row':(0,2),'bank':(0,7),'scheduled_delay': (0,0), 'core_id': (0,1)}
-        encod_ddr = self.encod(dict_['ddr_interference'],minmax_ddr)
-        encod_ddr = to_array(encod_ddr,minmax_ddr)
-        minmax_ddr_scheduler = {'bank': (0,7), 'scheduled_delay': (0,0), 'core_id': (0,1), 'core_attacker': (0,1), 'type_attacker': (0,1),  'bank_attacker': (0,7), 'row_attacker': (0,2)}
-        encod_ddr_scheduler = self.encod(dict_['ddr_scheduler_interference'],minmax_ddr_scheduler)
-
-        encod_ddr_scheduler = to_array(encod_ddr_scheduler,minmax_ddr_scheduler)
-
-        #minmax_L2 = {'set_idx': (0, num_sets), 'tag': [0, 0], 'evicted_core_id': (0, 1), 'evicted_instr_id': (0, 10), 'evicted_addr': (0,20), 'causing_core_id': (0, 1), 'causing_addr': [0,20]}
-        minmax_L2 = {'set_idx': (0, num_sets), 'tag': [0, 0], 'evicted_core_id': (0, 1), 'evicted_instr_id': (0, 10), 'causing_core_id': (0, 1)}
-        encod_L2 = self.encod(dict_['L2_cache_interference'],minmax_L2)
-        encod_L2 = to_array(encod_L2,minmax_L2)
-
-        if len(dict_['bus_interference']['competing_requests'])>0:
-            encod_bus = np.array([dict_['bus_interference']['competing_requests'][0]]) 
-        else:
-            encod_bus = np.array([0])
-        #print((encod_bus.shape,encod_ddr.shape,encod_ddr_scheduler.shape,encod_L2.shape))
-        output = np.concatenate((encod_bus,encod_ddr,encod_ddr_scheduler,encod_L2),axis=0)
-        return output
-    def _dict_to_array(self,dict_):
-        return np.concatenate(list(dict_.values()),axis=0)
-

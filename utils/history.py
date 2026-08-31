@@ -72,16 +72,16 @@ class History:
         #saves interference events and their type
         combination_vector = []
 
-        for if_type in obs[0]:
-            if len(list(obs[0][if_type].values())[0])>0:
-                tab = np.array(list(obs[0][if_type].values()))
+        for if_type in obs:
+            if len(list(obs[if_type].values())[0])>0:
+                tab = np.array(list(obs[if_type].values()))
                 tab = np.reshape(tab,(len(tab),-1))[:,0]
                 if if_type in self.memory_observation:
                     self.memory_observation_temp[if_type].append(tab)
                     self.memory_observation_idx_temp[if_type].append(self._j)
                 else:                             
                     #if if_type has never been stored yet, one creates a key and a dataframe in self.memory_observation
-                    self.memory_observation[if_type] = pd.DataFrame(index = obs[0][if_type].keys())
+                    self.memory_observation[if_type] = pd.DataFrame(index = obs[if_type].keys())
                     self.memory_observation[if_type][self._j] = tab
                     self.memory_observation_temp[if_type] = []
                     self.memory_observation_idx_temp[if_type] = []
@@ -90,7 +90,7 @@ class History:
         encod = np.zeros((4,))
         binary_rep = ''
         for j,component in enumerate(self.components):
-            if len(obs[0][component][list(obs[0][component].keys())[0]])>0:
+            if len(obs[component][list(obs[component].keys())[0]])>0:
                 encod[j] = 1
                 binary_rep +='1'
             else:
@@ -98,7 +98,7 @@ class History:
         self.memory_combinations[binary_rep].append(combination_vector)
         self.memory_components.append(encod)
         # saves the microcomponents that are involved with one hot encoding
-        self.memory_micro_components.append(obs[1])
+        #self.memory_micro_components.append(obs[1])
         
         if (self._j-1)%10==0 and self._j>0:
             self.update_memory()
