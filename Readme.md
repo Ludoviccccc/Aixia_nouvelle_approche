@@ -21,3 +21,4 @@ The intrinsically motivated goal exploration process allows the use of knowledge
 For our system, we'll use this algorithm that can be illustrated as follow:
 ![Alt text](illustrations/illustration_method.png)
 ![Alt text](illustrations/stats_behaviors.png)
+![Alt text](illustrations/stats_behaviors_evolution.png)
