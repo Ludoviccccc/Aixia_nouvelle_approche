@@ -40,6 +40,7 @@ class MutationInstructions:
                min_address,
                max_address,
         ):
+        assert len(instructions)<=self.max_instructions,f'number of instructions is too high:{len(mutated)}'
         # Create a deep copy to avoid modifying the original
         mutated = copy.deepcopy(instructions)
         instruction_types = ['read', 'write']
@@ -57,16 +58,20 @@ class MutationInstructions:
             return used_cycles,max_used_cycle,min_used_cycle,min_used_cycle_set,max_used_cycle_set,all_cycles,available_cycles
 
         used_cycles,max_used_cycle,min_used_cycle,min_used_cycle_set,max_used_cycle_set,all_cycles,available_cycles = determin_cycles(mutated)
+
+
         
-        for _ in range(self.num_mutations):
+        for i in range(self.num_mutations):
             if self.max_instructions>len(mutated)>3:
                 mutation_type = random.choice([ 'delete', 'modify'])
                 #mutation_type = random.choice(['modify'])
             elif self.max_instructions==len(mutated) and len(mutated)>3:
                 mutation_type = random.choice(['delete', 'modify'])
                 #mutation_type = random.choice(['modify'])
-            else:
+            elif len(mutated)<=3:
                 mutation_type = random.choice(['add'])
+            else:
+                raise Exception(f'iteration:{i}, number of instructions is too high:{len(mutated)}')
             if mutation_type == 'add' and available_cycles:
                 # Add a new instruction at an available cycle
                 new_cycle = random.choice(available_cycles)
@@ -106,13 +111,15 @@ class MutationInstructions:
                     new_cycle = random.choice(available_cycles)
                     mutated[new_cycle] = (old_type, old_address)
                     used_cycles,max_used_cycle,min_used_cycle,min_used_cycle_set,max_used_cycle_set,all_cycles,available_cycles = determin_cycles(mutated)
+                    del mutated[cycle_to_modify]
+                    available_cycles.append(cycle_to_modify)
 
-        if len(mutated)>self.max_instructions:
+        while len(mutated)>self.max_instructions:
             to_del = random.sample(list(mutated.keys()),len(mutated)- self.max_instructions)
             for k in to_del:
                 del mutated[k]
         return mutated
-    def __call__(self,program:dict,goal:dict):
+    def __call__(self,program:dict,goal:dict,outcome:dict = None):
         output = {'core0':self.mutate(program['core0'],self.min_address_core_0,self.max_address_core_0),
                 'core1':self.mutate(program['core1'],self.min_address_core_1,self.max_address_core_1)
                 }
