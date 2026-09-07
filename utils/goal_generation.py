@@ -42,17 +42,6 @@ class GoalGenerator:
         transf = np.exp(np.array(delta)*(-1.0))
         probs = transf/sum(transf)
         return probs
-    #def probs(self):
-    #    counts = []
-    #    for encod in self.encods:
-    #        nb = np.sum((encod==self.history.memory_components).sum(axis=1)==4)
-    #        counts.append(nb)
-    #    delta = np.array(counts) - self.counts
-    #    self.counts = np.array(counts)
-    #    #transf = np.exp(np.array(counts)*(-1.0))
-    #    transf = np.exp(np.array(delta)*(-1.0))
-    #    probs = transf/sum(transf)
-    #    return probs
     def __call__(self):
         '''
         defines a goal for imgep.
