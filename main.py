@@ -40,13 +40,12 @@ if __name__=='__main__':
     bandwidth_window_size = 20
  
     #IMGEP parameters
-    k_list = [1,2] #Number of neighbors in goal achievement strategy
+    k_list = [1,2,3] #Number of neighbors in goal achievement strategy
     N = 20000 #Number of imgep iterations
     capacity = N #History capacity
     N_init = 1000 #Number of warming iterations
     print_freq = 100
-    num_mutations = 4 #Nb of mutations in goal achievement strategy
-    chunk_size = 4
+    num_mutations = 3 #Nb of mutations in goal achievement strategy
     period = 100
 
     #address X to work on
@@ -88,30 +87,30 @@ if __name__=='__main__':
             #goal generation
             goalgenerator = GoalGenerator(history,representation)
 
-            #run_imgep(N_init=N_init,
-            #        N=N,
-            #        capacity=capacity,
-            #        k=k,
-            #        environment = environment,
-            #        history=history,
-            #        code_generation_method = code_generation_method,
-            #        goal_generator=goalgenerator,
-            #        mutation_method=mutation_method,
-            #        mutation_method_informed=mutation_method,
-            #        mixing_method=mixing_method,
-            #        representation=representation,
-            #        period_update_rep=period_update_rep,
-            #        period = period,
-            #        )
-            #history.save_pickle(f'{folder}/imgep_non_informed_mutation_if_N_{N}_k_{k}')
+            run_imgep(N_init=N_init,
+                    N=N,
+                    capacity=capacity,
+                    k=k,
+                    environment = environment,
+                    history=history,
+                    code_generation_method = code_generation_method,
+                    goal_generator=goalgenerator,
+                    mutation_method=mutation_method,
+                    mutation_method_informed=mutation_method,
+                    mixing_method=mixing_method,
+                    representation=representation,
+                    period_update_rep=period_update_rep,
+                    period = period,
+                    )
+            history.save_pickle(f'{folder}/imgep_non_informed_mutation_if_N_{N}_k_{k}_mutation_{num_mutations}')
 
 
             #baseline
-            history_baseline = History(capacity=capacity,unused=unused)
-            explorer_random = Randomexploration(N_init,environment,code_generation_method,history_baseline)
-            baseline_mixing = MixBaseline(N,N_init,environment,code_generation_method,history_baseline,explorer_random,k,mixing_method,mutation_method)
-            baseline_mixing()
-            history_baseline.save_pickle(f'{folder}/baseline_non_informed_mutation_if_N_{N}_k_{k}')
+            #history_baseline = History(capacity=capacity,unused=unused)
+            #explorer_random = Randomexploration(N_init,environment,code_generation_method,history_baseline)
+            #baseline_mixing = MixBaseline(N,N_init,environment,code_generation_method,history_baseline,explorer_random,k,mixing_method,mutation_method)
+            #baseline_mixing()
+            #history_baseline.save_pickle(f'{folder}/baseline_non_informed_mutation_if_N_{N}_k_{k}_mutation_{num_mutations}')
 
     
     #history_rand = History(capacity=capacity,unused=unused)
