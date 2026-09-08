@@ -1,8 +1,9 @@
 * The goal is to collect a diversity of interference behaviors when two independant programs are runing in paralle on both cores.
-* This would help to understand what are the mechanisms that are responsible for interference.
+* This would help to understand what mechanisms that are responsible for interference.
 
 
 ## Environment
+![All text](illustrations/simulator_new.png)
 The environment describes the our complex systems by specifying its entries and outputs.
 Interference events are among the following types:
 * L2 cache interference
@@ -11,14 +12,17 @@ Interference events are among the following types:
 * Interconnect contention
 
 
-To the aim of detecting interference, we synthesis a simulator that highlights any occuring interference event of these types.
+To the aim of identifying every interference behavior, we synthesis a simulator that highlights any occuring interference event of these types. The simulator has two cores 0 and 1 that execute on parallel pairs of simplfied assembly codes by using the hierarchy of the architecture.
 
 Because a simulator can output multiple interfence events for one pair of input codes, we will collect multiple observations for each experience.
-Throughout the exploration of the simulator, our autothelic agent targets combination of interference events involving the multiple interference types. For example, one can target both a DDR controller interference and an interconnect contention. Thus the goal achievement strategy model of IMGEP outputs a pair of programs that willpotentially exhibit these two type of interference.
+**Throughout the exploration of the simulator, our autothelic agent targets combination of interference events involving the multiple interference types. For example, one can target the realization of both a DDR controller interference and an interconnect contention within a single run.**
 
 ## IMGEP 
 The intrinsically motivated goal exploration process allows the use of knowledge on the output space of the complex systems to built candidate parameters that help increasing the discovery of the outputs in the output space.
 For our system, we'll use this algorithm that can be illustrated as follow:
 ![Alt text](illustrations/illustration_method.png)
+## Results 
+
+Our exploration strategy is able to collect many interfering pairs of codes that exhibit events from multiple shared resources at the same time. Bellow, results show that our methods is able to collect many more various interference phenomena with a shorter budget than random sampling distributions for pair of programs.
 ![Alt text](illustrations/stats_behaviors.png)
 ![Alt text](illustrations/stats_behaviors_evolution.png)
