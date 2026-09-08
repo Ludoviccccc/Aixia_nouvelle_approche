@@ -92,7 +92,8 @@ class MutationInstructions:
                 old_type, old_address = mutated[cycle_to_modify]
                 
                 # Choose what to modify: type, address, or both
-                modify_choice = random.choice(['type', 'address', 'both','cycle'])
+                modify_choice = random.choice(['type', 'address','cycle'])
+                #modify_choice = random.choice(['both','cycle'])
                 
                 if modify_choice == 'type':
                     # Change instruction type only
