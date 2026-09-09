@@ -3,7 +3,7 @@
 
 
 ## Environment
-![All text](illustrations/simulator_new.png)
+<img src="illustrations/simulator_new.png" alt="simulator_new" width="300"/>
 The environment describes the our complex systems by specifying its entries and outputs.
 Interference events are among the following types:
 * L2 cache interference
