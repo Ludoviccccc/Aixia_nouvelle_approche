@@ -51,7 +51,6 @@ class MutationInstructions:
             max_used_cycle = max(used_cycles)
             min_used_cycle = min(used_cycles)
             min_used_cycle_set = set([min_used_cycle])
-            #print('min used cycle',min_used_cycle)
             max_used_cycle_set = set([max_used_cycle])
             all_cycles = set(range(0, self.max_cycle + 1))
             available_cycles = list(all_cycles - used_cycles)
@@ -64,10 +63,8 @@ class MutationInstructions:
         for i in range(self.num_mutations):
             if self.max_instructions>len(mutated)>3:
                 mutation_type = random.choice([ 'delete', 'modify'])
-                #mutation_type = random.choice(['modify'])
             elif self.max_instructions==len(mutated) and len(mutated)>3:
                 mutation_type = random.choice(['delete', 'modify'])
-                #mutation_type = random.choice(['modify'])
             elif len(mutated)<=3:
                 mutation_type = random.choice(['add'])
             else:

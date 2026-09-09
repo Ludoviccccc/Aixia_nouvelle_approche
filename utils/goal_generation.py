@@ -2,7 +2,6 @@ import numpy as np
 import sys
 sys.path.append('../')
 from utils.history import History
-from utils.representation import Representation
 
 
 from itertools import combinations
@@ -18,7 +17,7 @@ def get_all_subsets(input_list):
 
 class GoalGenerator:
     def __init__(self,history:History,
-            representation:Representation=None):
+            ):
         self.history = history
         self.components = ['bus_interference',
                      'ddr_interference',
